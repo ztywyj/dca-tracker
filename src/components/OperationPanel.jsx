@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarDays, LoaderCircle, RefreshCcw } from 'lucide-react'
 import { getPeriodicAmount, getSuggestedShares as getDcaSuggestedShares } from '../utils/dcaCalc'
 import {
@@ -12,8 +12,7 @@ import { fetchQuote } from '../hooks/useQuote'
 const decisionOptions = [
   { value: 'normal', label: '正常执行' },
   { value: 'underweight', label: '主动低配' },
-  { value: 'waiting', label: '等待触发' },
-  { value: 'paused', label: '暂停' },
+  { value: 'paused', label: '本期暂停' },
 ]
 
 function formatMoney(value) {
@@ -34,6 +33,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
   const [tag, setTag] = useState('normal')
   const [note, setNote] = useState('')
   const [assetStates, setAssetStates] = useState([])
+  const dateInputRef = useRef(null)
 
   const targetMatrix = useMemo(() => (plan ? calcAllTargets(plan) : []), [plan])
 
@@ -179,22 +179,45 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
   return (
     <section className="space-y-5">
       <div className="card p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-4">
           <div>
-            <p className="label">Current execution</p>
+            <p className="label">本期操作</p>
             <h2 className="mt-2 text-xl font-semibold text-white">
               第 {currentPeriod + 1} 期 / 共 {plan.totalPeriods} 期
             </h2>
           </div>
-          <label className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
             <CalendarDays size={16} className="text-accent" />
+            <button
+              type="button"
+              onClick={() => {
+                dateInputRef.current?.showPicker?.()
+                dateInputRef.current?.focus()
+              }}
+              className="text-slate-400 transition hover:text-slate-200"
+            >
+              执行日期
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                dateInputRef.current?.showPicker?.()
+                dateInputRef.current?.focus()
+              }}
+              className="font-mono text-white transition hover:text-accent"
+            >
+              {operationDate}
+            </button>
             <input
+              ref={dateInputRef}
               type="date"
               value={operationDate}
               onChange={(event) => setOperationDate(event.target.value)}
-              className="bg-transparent text-white outline-none"
+              className="sr-only"
+              tabIndex={-1}
+              aria-label="执行日期"
             />
-          </label>
+          </div>
         </div>
         {latestRecord ? (
           <p className="mt-4 text-sm text-slate-400">上期记录日期：{latestRecord.date.slice(0, 10)}</p>
@@ -293,7 +316,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
       </div>
 
       <div className="card p-5">
-        <p className="label">Execution decision</p>
+        <p className="label">执行决策</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-4">
           {decisionOptions.map((option) => (
             <button

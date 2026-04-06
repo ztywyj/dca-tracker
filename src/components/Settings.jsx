@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
-import { Plus, Save, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Plus, Save, Sparkles, Trash2 } from 'lucide-react'
+import { estimateTargetYield } from '../utils/yieldEstimator'
 
 const strategyOptions = [
   { value: 'VA', label: 'VA定投' },
@@ -45,14 +46,26 @@ function formatMoney(value) {
   }).format(Number(value) || 0)
 }
 
+function formatPercent(value) {
+  return `${Math.round((Number(value) || 0) * 100)}%`
+}
+
 function generateId() {
   return `plan-${Date.now()}`
 }
 
-export default function Settings({ plan, onSavePlan, onNavigate }) {
+export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData }) {
   const [form, setForm] = useState(() => (plan ? { ...plan, assets: [...plan.assets] } : createDraftPlan()))
   const [showAssetForm, setShowAssetForm] = useState(false)
   const [assetDraft, setAssetDraft] = useState(createAssetDraft())
+  const [estimatedRange, setEstimatedRange] = useState(null)
+
+  useEffect(() => {
+    setForm(plan ? { ...plan, assets: [...plan.assets] } : createDraftPlan())
+    setShowAssetForm(false)
+    setAssetDraft(createAssetDraft())
+    setEstimatedRange(null)
+  }, [plan])
 
   const totalWeight = useMemo(
     () => form.assets.reduce((sum, asset) => sum + (Number(asset.weight) || 0), 0),
@@ -114,6 +127,15 @@ export default function Settings({ plan, onSavePlan, onNavigate }) {
     }))
   }
 
+  const handleEstimateYield = () => {
+    const estimation = estimateTargetYield(form.assets)
+    updateField('targetAnnualReturn', estimation.estimatedYield)
+    setEstimatedRange({
+      minYield: estimation.minYield,
+      maxYield: estimation.maxYield,
+    })
+  }
+
   const handleSave = () => {
     if (!canSave) {
       return
@@ -146,6 +168,21 @@ export default function Settings({ plan, onSavePlan, onNavigate }) {
     setForm(createDraftPlan())
     setShowAssetForm(false)
     setAssetDraft(createAssetDraft())
+    setEstimatedRange(null)
+  }
+
+  const handleClearAll = () => {
+    const confirmed = window.confirm('此操作将清除所有计划和历史记录，无法恢复，确认继续？')
+    if (!confirmed) {
+      return
+    }
+
+    onClearAllData?.()
+    setForm(createDraftPlan())
+    setShowAssetForm(false)
+    setAssetDraft(createAssetDraft())
+    setEstimatedRange(null)
+    onNavigate('settings')
   }
 
   return (
@@ -209,7 +246,14 @@ export default function Settings({ plan, onSavePlan, onNavigate }) {
                     onChange={() => updateField('strategy', option.value)}
                     className="sr-only"
                   />
-                  {option.label}
+                  <div className="font-medium">{option.label}</div>
+                  {form.strategy === option.value ? (
+                    <p className="mt-2 text-xs text-slate-400">
+                      {option.value === 'VA'
+                        ? '根据市值与目标的差距决定每期投多少——涨了少买，跌了多买，自动抄底。'
+                        : '每期固定投入相同金额，不管涨跌，纪律执行，适合懒人长期持有。'}
+                    </p>
+                  ) : null}
                 </label>
               ))}
             </div>
@@ -278,7 +322,18 @@ export default function Settings({ plan, onSavePlan, onNavigate }) {
               <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-sm text-slate-300">目标年化收益率</span>
-                  <span className="font-mono text-white">{Math.round((Number(form.targetAnnualReturn) || 0) * 100)}%</span>
+                  <button
+                    type="button"
+                    onClick={handleEstimateYield}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-accent/30 bg-accent/10 px-3 py-2 text-xs text-accent transition hover:bg-accent/20"
+                  >
+                    <Sparkles size={14} />
+                    自动测算
+                  </button>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm text-slate-300">当前建议值</span>
+                  <span className="font-mono text-white">{formatPercent(form.targetAnnualReturn)}</span>
                 </div>
                 <input
                   type="range"
@@ -289,6 +344,16 @@ export default function Settings({ plan, onSavePlan, onNavigate }) {
                   onChange={(event) => updateField('targetAnnualReturn', Number(event.target.value))}
                   className="w-full accent-blue-400"
                 />
+                {estimatedRange ? (
+                  <div className="space-y-2 text-xs text-slate-400">
+                    <p>
+                      根据组合历史表现估算，建议范围 {formatPercent(estimatedRange.minYield)}~{formatPercent(estimatedRange.maxYield)}（上下浮动5%），可手动调整
+                    </p>
+                    <p>
+                      数据基于各标的10年历史CAGR（含股息再投资），TSLA/IBIT等高波动标的历史收益不代表未来表现，仅供参考。
+                    </p>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
@@ -348,7 +413,7 @@ export default function Settings({ plan, onSavePlan, onNavigate }) {
                     className="w-full accent-blue-400"
                   />
                 </div>
-                <div className="sm:col-span-2 flex justify-end">
+                <div className="flex justify-end sm:col-span-2">
                   <button
                     type="button"
                     onClick={saveAssetDraft}
@@ -411,7 +476,7 @@ export default function Settings({ plan, onSavePlan, onNavigate }) {
       </div>
 
       <aside className="card p-5">
-        <p className="label">Plan summary</p>
+        <p className="label">计划概览</p>
         <h3 className="mt-2 text-xl font-semibold text-white">保存前检查</h3>
         <div className="mt-6 space-y-4 text-sm leading-7 text-slate-300">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -433,6 +498,14 @@ export default function Settings({ plan, onSavePlan, onNavigate }) {
           >
             <Save size={18} />
             保存计划
+          </button>
+          <button
+            type="button"
+            onClick={handleClearAll}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-medium text-red-300 transition hover:bg-red-500/20"
+          >
+            <Trash2 size={18} />
+            清除所有数据
           </button>
         </div>
       </aside>

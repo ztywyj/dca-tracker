@@ -12,18 +12,12 @@ export default function Layout({ activeTab, onChangeTab, children }) {
     <div className="min-h-screen bg-radial px-3 pb-28 pt-4 text-white sm:px-6 sm:pt-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:gap-6">
         <header className="card overflow-hidden p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="label">Personal investing cockpit</p>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">DCA Tracker</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                跟踪每期定投执行、账户累计投入与收益变化，用更清晰的视角管理长期计划。
-              </p>
-            </div>
-            <div className="hidden rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-right sm:block">
-              <p className="label text-accent">Mode</p>
-              <p className="mt-1 font-mono text-sm text-slate-100">Capital Discipline</p>
-            </div>
+          <div className="min-w-0">
+            <p className="label">个人定投面板</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">DCA Tracker</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+              跟踪每期定投执行、账户累计投入与收益变化，用更清晰的视角管理长期计划。
+            </p>
           </div>
         </header>
 
