@@ -96,7 +96,9 @@ function rebuildPlanState(plan, records) {
 
     const totalActualAmount = roundToTwo(nextAssets.reduce((sum, asset) => sum + (Number(asset.actualAmount) || 0), 0))
     cumulativeInvested = roundToTwo(cumulativeInvested + totalActualAmount)
-    const remainingBudget = roundToTwo((Number(plan.totalBudget) || 0) - cumulativeInvested)
+    const remainingBudget = plan.budgetMode === 'open-ended'
+      ? 0
+      : roundToTwo((Number(plan.totalBudget) || 0) - cumulativeInvested)
 
     return {
       ...normalizedRecord,
@@ -143,7 +145,7 @@ function rebuildStateAfterRecordEdit(plan, records, updatedRecord) {
 }
 
 export default function App() {
-  const { plan, replacePlan, resetPlan } = usePlan()
+  const { plan, plans, activePlanId, setActivePlan, replacePlan, resetPlan } = usePlan()
   const { records, addRecord, replaceRecords } = useRecords()
   const [activeTab, setActiveTab] = useState('dashboard')
 
@@ -175,11 +177,20 @@ export default function App() {
   }
 
   const handleImportBackup = (payload) => {
-    const nextPlan = payload?.plan ?? null
+    const nextPlans = Array.isArray(payload?.plans)
+      ? payload.plans
+      : payload?.plan
+        ? [payload.plan]
+        : []
+    const nextActivePlanId = payload?.activePlanId || nextPlans[0]?.id || null
     const nextRecords = Array.isArray(payload?.records) ? payload.records : []
+
     replaceRecords(nextRecords)
-    replacePlan(nextPlan)
-    setActiveTab(nextPlan ? 'history' : 'settings')
+    nextPlans.forEach((item) => replacePlan(item))
+    if (nextActivePlanId) {
+      setActivePlan(nextActivePlanId)
+    }
+    setActiveTab(nextPlans.length ? 'history' : 'settings')
   }
 
   const handleClearAllData = () => {
@@ -189,25 +200,17 @@ export default function App() {
     setActiveTab('settings')
   }
 
-  if (!plan) {
-    return (
-      <Layout activeTab="settings" onChangeTab={setActiveTab}>
-        <Settings
-          plan={null}
-          records={records}
-          onSavePlan={handleSavePlan}
-          onSaveRecord={handleSaveRecord}
-          onClearAllData={handleClearAllData}
-          onNavigate={setActiveTab}
-        />
-      </Layout>
-    )
-  }
-
   return (
-    <Layout activeTab={activeTab} onChangeTab={setActiveTab}>
+    <Layout
+      activeTab={activeTab}
+      onChangeTab={setActiveTab}
+      plans={plans}
+      activePlanId={activePlanId || ''}
+      onChangeActivePlan={setActivePlan}
+    >
       <Screen
         plan={plan}
+        plans={plans}
         records={records}
         onSavePlan={handleSavePlan}
         onSaveRecord={handleSaveRecord}

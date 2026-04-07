@@ -1,5 +1,7 @@
 const STORAGE_KEYS = {
   plan: 'dca-tracker:plan',
+  plans: 'dca-tracker:plans',
+  activePlanId: 'dca-tracker:active-plan-id',
   records: 'dca-tracker:records',
 }
 
@@ -41,6 +43,22 @@ export function loadPlan() {
   return readStorage(STORAGE_KEYS.plan, null)
 }
 
+export function savePlans(plans) {
+  writeStorage(STORAGE_KEYS.plans, Array.isArray(plans) ? plans : [])
+}
+
+export function loadPlans() {
+  return readStorage(STORAGE_KEYS.plans, [])
+}
+
+export function saveActivePlanId(activePlanId) {
+  writeStorage(STORAGE_KEYS.activePlanId, activePlanId || null)
+}
+
+export function loadActivePlanId() {
+  return readStorage(STORAGE_KEYS.activePlanId, null)
+}
+
 export function saveRecords(records) {
   writeStorage(STORAGE_KEYS.records, Array.isArray(records) ? records : [])
 }
@@ -56,6 +74,8 @@ export function clearAll() {
 
   try {
     window.localStorage.removeItem(STORAGE_KEYS.plan)
+    window.localStorage.removeItem(STORAGE_KEYS.plans)
+    window.localStorage.removeItem(STORAGE_KEYS.activePlanId)
     window.localStorage.removeItem(STORAGE_KEYS.records)
   } catch (error) {
     console.error('Failed to clear storage', error)

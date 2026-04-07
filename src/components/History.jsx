@@ -102,6 +102,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
   const [editingId, setEditingId] = useState('')
   const [editDraft, setEditDraft] = useState(null)
   const fileInputRef = useRef(null)
+  const isOpenEnded = plan?.budgetMode === 'open-ended'
 
   const planRecords = useMemo(() => {
     const scoped = plan ? records.filter((record) => record.planId === plan.id) : []
@@ -121,12 +122,14 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
 
   const handleExportJson = () => {
     const today = new Date().toISOString().slice(0, 10)
-    const payload = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      plan,
-      records,
-    }
+      const payload = {
+        version: '2.0',
+        exportedAt: new Date().toISOString(),
+        plans: plan ? [plan] : [],
+        activePlanId: plan?.id || null,
+        plan,
+        records,
+      }
     downloadFile(`dca-backup-${today}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8;')
   }
 
@@ -246,8 +249,11 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
       <div className="card p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="label">Execution archive</p>
+            <p className="label">执行档案</p>
             <h2 className="mt-2 text-xl font-semibold text-white">历史记录</h2>
+            <p className="mt-2 text-sm text-slate-400">
+              {isOpenEnded ? '当前为无限定投模式，历史会持续累计，不设结束期数。' : '当前为固定预算模式，历史记录会跟随总期数推进。'}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button

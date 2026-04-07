@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Activity, Banknote, CircleDollarSign, HelpCircle, ShieldEllipsis } from 'lucide-react'
 import {
   Bar,
@@ -24,6 +24,15 @@ function formatMoney(value) {
     currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
+  }).format(Number(value) || 0)
+}
+
+function formatMoneyPrecise(value) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Number(value) || 0)
 }
 
@@ -71,6 +80,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
     )
   }
 
+  const isOpenEnded = plan.budgetMode === 'open-ended'
   const planRecords = records
     .filter((record) => record.planId === plan.id)
     .slice()
@@ -158,36 +168,85 @@ export default function Dashboard({ plan, records, onNavigate }) {
     }
   })
 
-  const metrics = [
-    {
-      label: '当前总市值',
-      value: formatMoney(marketValue),
-      icon: CircleDollarSign,
-      tone: 'text-white',
-      guide: '所有持仓按最新价格计算的总价值',
-    },
-    {
-      label: '累计总投入',
-      value: formatMoney(totalInvested),
-      icon: Banknote,
-      tone: 'text-white',
-      guide: '你实际花出去的总金额，不含账面盈亏',
-    },
-    {
-      label: '浮动盈亏',
-      value: `${formatMoney(floatingProfit)} · ${formatPercent(floatingProfitPct)}`,
-      icon: Activity,
-      tone: floatingProfit >= 0 ? 'text-positive' : 'text-negative',
-      guide: '当前市值 - 累计投入，绿色赚钱红色亏损',
-    },
-    {
-      label: '剩余子弹',
-      value: formatMoney(remainingBudget),
-      icon: ShieldEllipsis,
-      tone: 'text-white',
-      guide: '总预算里还没有投入的资金，保留底仓不能全花',
-    },
-  ]
+  const averageCostData = plan.assets
+    .map((asset) => {
+      const totalShares = Number(asset.currentShares) || 0
+      const cumulativeCost = planRecords.reduce((sum, record) => {
+        const matchedAsset = record.assets.find((item) => item.ticker === asset.ticker)
+        return sum + (Number(matchedAsset?.actualAmount) || 0)
+      }, 0)
+      const latestPrice = latestPriceMap[asset.ticker] || 0
+
+      return {
+        ticker: asset.ticker,
+        totalShares,
+        averageCost: totalShares > 0 ? cumulativeCost / totalShares : 0,
+        latestPrice,
+      }
+    })
+    .filter((item) => item.totalShares > 0)
+
+  const metrics = isOpenEnded
+    ? [
+        {
+          label: '当前总市值',
+          value: formatMoney(marketValue),
+          icon: CircleDollarSign,
+          tone: 'text-white',
+          guide: '所有持仓按最新价格计算的总价值',
+        },
+        {
+          label: '累计总投入',
+          value: formatMoney(totalInvested),
+          icon: Banknote,
+          tone: 'text-white',
+          guide: '你实际花出去的总金额，不含账面盈亏',
+        },
+        {
+          label: '浮动盈亏',
+          value: `${formatMoney(floatingProfit)} · ${formatPercent(floatingProfitPct)}`,
+          icon: Activity,
+          tone: floatingProfit >= 0 ? 'text-positive' : 'text-negative',
+          guide: '当前市值 - 累计投入，绿色赚钱红色亏损',
+        },
+        {
+          label: '已坚持',
+          value: `已坚持 ${planRecords.length} 期`,
+          icon: ShieldEllipsis,
+          tone: 'text-white',
+          guide: '按记录数量统计你已经持续执行了多少期',
+        },
+      ]
+    : [
+        {
+          label: '当前总市值',
+          value: formatMoney(marketValue),
+          icon: CircleDollarSign,
+          tone: 'text-white',
+          guide: '所有持仓按最新价格计算的总价值',
+        },
+        {
+          label: '累计总投入',
+          value: formatMoney(totalInvested),
+          icon: Banknote,
+          tone: 'text-white',
+          guide: '你实际花出去的总金额，不含账面盈亏',
+        },
+        {
+          label: '浮动盈亏',
+          value: `${formatMoney(floatingProfit)} · ${formatPercent(floatingProfitPct)}`,
+          icon: Activity,
+          tone: floatingProfit >= 0 ? 'text-positive' : 'text-negative',
+          guide: '当前市值 - 累计投入，绿色赚钱红色亏损',
+        },
+        {
+          label: '剩余子弹',
+          value: formatMoney(remainingBudget),
+          icon: ShieldEllipsis,
+          tone: 'text-white',
+          guide: '总预算里还没有投入的资金，保留底仓不能全花',
+        },
+      ]
 
   return (
     <section className="space-y-5">
@@ -218,20 +277,46 @@ export default function Dashboard({ plan, records, onNavigate }) {
         })}
       </div>
 
-      <div className="card p-5">
-        <p className="label">资金安全垫</p>
-        <h2 className="mt-2 text-xl font-semibold text-white">安全底仓进度</h2>
-        <p className="mt-3 text-sm text-slate-300">
-          已用 {formatMoney(totalInvested)} · 保留下限 {formatMoney(reserveFloor)} · 还可动用 {formatMoney(drawableBudget)}
-        </p>
-        <div className="mt-4 h-3 rounded-full bg-white/10">
-          <div
-            className={`h-3 rounded-full transition-all ${getProgressTone(progressRatio)}`}
-            style={{ width: `${Math.min(progressRatio * 100, 100)}%` }}
-          />
+      {isOpenEnded ? (
+        <div className="card p-5">
+          <p className="label">持仓成本</p>
+          <h2 className="mt-2 text-xl font-semibold text-white">平均成本</h2>
+          {showGuide ? <GuideBadge>按每个标的的累计投入除以累计持仓股数，显示当前平均成本。</GuideBadge> : null}
+          <div className="mt-4 space-y-3">
+            {averageCostData.length ? (
+              averageCostData.map((item) => (
+                <div key={item.ticker} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-mono text-white">{item.ticker}</span>
+                    <span className="text-slate-300">均价 {formatMoneyPrecise(item.averageCost)} / 股</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-4 text-xs text-slate-400">
+                    <span>持仓 {item.totalShares} 股</span>
+                    <span>现价 {formatMoneyPrecise(item.latestPrice)}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-400">暂无可计算的持仓成本数据。</p>
+            )}
+          </div>
         </div>
-        {showGuide ? <GuideBadge>已投金额占总可投金额的比例，红色代表底仓告急</GuideBadge> : null}
-      </div>
+      ) : (
+        <div className="card p-5">
+          <p className="label">资金安全垫</p>
+          <h2 className="mt-2 text-xl font-semibold text-white">安全底仓进度</h2>
+          <p className="mt-3 text-sm text-slate-300">
+            已用 {formatMoney(totalInvested)} · 保留下限 {formatMoney(reserveFloor)} · 还可动用 {formatMoney(drawableBudget)}
+          </p>
+          <div className="mt-4 h-3 rounded-full bg-white/10">
+            <div
+              className={`h-3 rounded-full transition-all ${getProgressTone(progressRatio)}`}
+              style={{ width: `${Math.min(progressRatio * 100, 100)}%` }}
+            />
+          </div>
+          {showGuide ? <GuideBadge>已投金额占总可投金额的比例，红色代表底仓告急</GuideBadge> : null}
+        </div>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-2">
         <article className="card p-5 xl:col-span-2">

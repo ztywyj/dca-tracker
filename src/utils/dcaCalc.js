@@ -11,6 +11,10 @@ function getDeployableBudget(plan = {}) {
 }
 
 export function getPeriodicAmount(plan = {}, assetWeight = 0) {
+  if (plan?.budgetMode === 'open-ended') {
+    return roundToTwo((Number(plan.periodicTarget) || 0) * (Number(assetWeight) || 0))
+  }
+
   const deployableBudget = getDeployableBudget(plan)
   const totalPeriods = Math.max(1, Number(plan.totalPeriods) || 1)
   return roundToTwo((deployableBudget * (Number(assetWeight) || 0)) / totalPeriods)

@@ -7,7 +7,9 @@ const navItems = [
   { key: 'settings', label: '设置', icon: SettingsIcon },
 ]
 
-export default function Layout({ activeTab, onChangeTab, children }) {
+export default function Layout({ activeTab, onChangeTab, children, plans = [], activePlanId = '', onChangeActivePlan }) {
+  const hasPlans = Array.isArray(plans) && plans.length > 0
+
   return (
     <div className="min-h-screen bg-radial px-3 pb-28 pt-4 text-white sm:px-6 sm:pt-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:gap-6">
@@ -18,6 +20,22 @@ export default function Layout({ activeTab, onChangeTab, children }) {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
               跟踪每期定投执行、账户累计投入与收益变化，用更清晰的视角管理长期计划。
             </p>
+            {hasPlans ? (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <span className="text-sm text-slate-400">当前计划</span>
+                <select
+                  value={activePlanId}
+                  onChange={(event) => onChangeActivePlan?.(event.target.value)}
+                  className="rounded-2xl border border-white/10 bg-surface px-4 py-2 text-sm text-white outline-none transition focus:border-accent"
+                >
+                  {plans.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name || '未命名计划'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
           </div>
         </header>
 

@@ -7,24 +7,56 @@ const strategyOptions = [
   { value: 'DCA', label: 'DCA定额' },
 ]
 
+const budgetModeOptions = [
+  {
+    value: 'fixed',
+    label: '固定预算',
+    description: '我有一笔闲钱，计划分X期投完（现有逻辑）',
+  },
+  {
+    value: 'open-ended',
+    label: '无限定投',
+    description: '我用每期收入的固定部分持续投入，没有终点',
+  },
+]
+
 const frequencyOptions = [
   { value: 'biweekly', label: '双周' },
   { value: 'monthly', label: '月' },
 ]
+
+const OPEN_ENDED_PLACEHOLDER_PERIODS = 9999
 
 function createDraftPlan() {
   return {
     id: '',
     name: '',
     strategy: 'VA',
+    budgetMode: 'fixed',
     totalBudget: 10000,
     reserveRatio: 0.2,
     totalPeriods: 24,
+    periodicTarget: 1000,
     currentPeriod: 0,
     frequency: 'monthly',
     targetAnnualReturn: 0.25,
     assets: [],
     createdAt: '',
+  }
+}
+
+function normalizeFormPlan(source) {
+  const base = source ? { ...source, assets: [...(source.assets || [])] } : createDraftPlan()
+  const budgetMode = base.budgetMode === 'open-ended' ? 'open-ended' : 'fixed'
+
+  return {
+    ...createDraftPlan(),
+    ...base,
+    budgetMode,
+    periodicTarget: Number(base.periodicTarget) || 0,
+    totalPeriods: budgetMode === 'open-ended'
+      ? Math.max(Number(base.totalPeriods) || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)
+      : Math.max(1, Number(base.totalPeriods) || 1),
   }
 }
 
@@ -54,14 +86,14 @@ function generateId() {
   return `plan-${Date.now()}`
 }
 
-export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData }) {
-  const [form, setForm] = useState(() => (plan ? { ...plan, assets: [...plan.assets] } : createDraftPlan()))
+export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData, plans = [] }) {
+  const [form, setForm] = useState(() => normalizeFormPlan(plan))
   const [showAssetForm, setShowAssetForm] = useState(false)
   const [assetDraft, setAssetDraft] = useState(createAssetDraft())
   const [estimatedRange, setEstimatedRange] = useState(null)
 
   useEffect(() => {
-    setForm(plan ? { ...plan, assets: [...plan.assets] } : createDraftPlan())
+    setForm(normalizeFormPlan(plan))
     setShowAssetForm(false)
     setAssetDraft(createAssetDraft())
     setEstimatedRange(null)
@@ -72,16 +104,32 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
     [form.assets],
   )
 
+  const isOpenEnded = form.budgetMode === 'open-ended'
   const reservedCash = (Number(form.totalBudget) || 0) * (Number(form.reserveRatio) || 0)
   const deployableCash = (Number(form.totalBudget) || 0) - reservedCash
   const isWeightValid = form.assets.length > 0 && Math.abs(totalWeight - 1) < 0.001
-  const canSave = form.name.trim() && Number(form.totalBudget) > 0 && Number(form.totalPeriods) > 0 && isWeightValid
+  const hasValidBudget = isOpenEnded ? Number(form.periodicTarget) >= 0 : Number(form.totalBudget) > 0 && Number(form.totalPeriods) > 0
+  const canSave = form.name.trim() && hasValidBudget && isWeightValid
 
   const updateField = (key, value) => {
-    setForm((current) => ({
-      ...current,
-      [key]: value,
-    }))
+    setForm((current) => {
+      const next = {
+        ...current,
+        [key]: value,
+      }
+
+      if (key === 'budgetMode') {
+        return {
+          ...next,
+          budgetMode: value,
+          totalPeriods: value === 'open-ended'
+            ? Math.max(Number(current.totalPeriods) || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)
+            : Math.max(1, Number(current.totalPeriods) || 24),
+        }
+      }
+
+      return next
+    })
   }
 
   const saveAssetDraft = () => {
@@ -145,9 +193,13 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
       ...form,
       id: form.id || generateId(),
       name: form.name.trim(),
-      totalBudget: Number(form.totalBudget) || 0,
-      reserveRatio: Number(form.reserveRatio) || 0.2,
-      totalPeriods: Number(form.totalPeriods) || 1,
+      budgetMode: isOpenEnded ? 'open-ended' : 'fixed',
+      totalBudget: isOpenEnded ? 0 : (Number(form.totalBudget) || 0),
+      reserveRatio: isOpenEnded ? 0 : (Number(form.reserveRatio) || 0.2),
+      totalPeriods: isOpenEnded
+        ? Math.max(Number(form.totalPeriods) || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)
+        : (Number(form.totalPeriods) || 1),
+      periodicTarget: isOpenEnded ? (Number(form.periodicTarget) || 0) : (Number(form.periodicTarget) || 0),
       currentPeriod: Number(form.currentPeriod) || 0,
       targetAnnualReturn: Number(form.targetAnnualReturn) || 0.25,
       createdAt: form.createdAt || new Date().toISOString(),
@@ -190,17 +242,17 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
       <div className="card p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="label">Plan configuration</p>
+            <p className="label">计划配置</p>
             <h2 className="mt-2 text-xl font-semibold text-white">计划设置</h2>
             <p className="mt-2 text-sm text-slate-400">
-              {plan ? `当前计划：${plan.name}` : '首次进入请先创建计划，保存后将进入总览页。'}
+              {plan ? `当前计划：${plan.name} · 共 ${plans.length || 1} 份计划` : '首次进入请先创建计划，保存后将进入总览页。'}
             </p>
           </div>
           {plan ? (
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setForm({ ...plan, assets: [...plan.assets] })}
+                onClick={() => setForm(normalizeFormPlan(plan))}
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
               >
                 修改计划
@@ -227,6 +279,31 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
               className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent"
             />
           </label>
+
+          <div className="space-y-3">
+            <span className="text-sm text-slate-300">预算模式</span>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {budgetModeOptions.map((option) => (
+                <label
+                  key={option.value}
+                  className={`rounded-2xl border px-4 py-3 transition ${
+                    form.budgetMode === option.value ? 'border-accent bg-accent/10 text-white' : 'border-white/10 bg-white/5 text-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="budgetMode"
+                    value={option.value}
+                    checked={form.budgetMode === option.value}
+                    onChange={() => updateField('budgetMode', option.value)}
+                    className="sr-only"
+                  />
+                  <div className="font-medium">{option.label}</div>
+                  <p className="mt-2 text-xs text-slate-400">{option.description}</p>
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div className="space-y-3">
             <span className="text-sm text-slate-300">策略类型</span>
@@ -259,48 +336,68 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="space-y-2">
-              <span className="text-sm text-slate-300">总预算（美元）</span>
-              <input
-                type="number"
-                min="0"
-                value={form.totalBudget}
-                onChange={(event) => updateField('totalBudget', Number(event.target.value))}
-                className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent"
-              />
-            </label>
-
-            <label className="space-y-2">
-              <span className="text-sm text-slate-300">总期数</span>
-              <input
-                type="number"
-                min="1"
-                value={form.totalPeriods}
-                onChange={(event) => updateField('totalPeriods', Number(event.target.value))}
-                className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent"
-              />
-            </label>
-          </div>
-
-          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-slate-300">保留现金比例</span>
-              <span className="font-mono text-white">{Math.round((Number(form.reserveRatio) || 0) * 100)}%</span>
+          {isOpenEnded ? (
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <label className="space-y-2 block">
+                <span className="text-sm text-slate-300">每期计划投入金额（美元）</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.periodicTarget}
+                  onChange={(event) => updateField('periodicTarget', Number(event.target.value))}
+                  className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent"
+                />
+              </label>
+              <p className="text-sm text-slate-400">
+                实际每期可多可少，这里填你的目标金额，仅用于生成建议，不做硬性限制。
+              </p>
             </div>
-            <input
-              type="range"
-              min="0.1"
-              max="0.3"
-              step="0.01"
-              value={form.reserveRatio}
-              onChange={(event) => updateField('reserveRatio', Number(event.target.value))}
-              className="w-full accent-blue-400"
-            />
-            <p className="text-sm text-slate-400">
-              保留 {formatMoney(reservedCash)}，可投 {formatMoney(deployableCash)}
-            </p>
-          </div>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-sm text-slate-300">总预算（美元）</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.totalBudget}
+                    onChange={(event) => updateField('totalBudget', Number(event.target.value))}
+                    className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm text-slate-300">总期数</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={form.totalPeriods}
+                    onChange={(event) => updateField('totalPeriods', Number(event.target.value))}
+                    className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent"
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm text-slate-300">保留现金比例</span>
+                  <span className="font-mono text-white">{Math.round((Number(form.reserveRatio) || 0) * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="0.3"
+                  step="0.01"
+                  value={form.reserveRatio}
+                  onChange={(event) => updateField('reserveRatio', Number(event.target.value))}
+                  className="w-full accent-blue-400"
+                />
+                <p className="text-sm text-slate-400">
+                  保留 {formatMoney(reservedCash)}，可投 {formatMoney(deployableCash)}
+                </p>
+              </div>
+            </>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-2">
@@ -480,10 +577,17 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
         <h3 className="mt-2 text-xl font-semibold text-white">保存前检查</h3>
         <div className="mt-6 space-y-4 text-sm leading-7 text-slate-300">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p>预算模式：<span className="font-medium text-white">{isOpenEnded ? '无限定投' : '固定预算'}</span></p>
             <p>策略：<span className="font-medium text-white">{form.strategy}</span></p>
             <p>频率：<span className="font-medium text-white">{form.frequency === 'biweekly' ? '双周' : '月'}</span></p>
-            <p>总预算：<span className="font-mono text-white">{formatMoney(form.totalBudget)}</span></p>
-            <p>可投资金：<span className="font-mono text-accent">{formatMoney(deployableCash)}</span></p>
+            {isOpenEnded ? (
+              <p>每期目标：<span className="font-mono text-accent">{formatMoney(form.periodicTarget)}</span></p>
+            ) : (
+              <>
+                <p>总预算：<span className="font-mono text-white">{formatMoney(form.totalBudget)}</span></p>
+                <p>可投资金：<span className="font-mono text-accent">{formatMoney(deployableCash)}</span></p>
+              </>
+            )}
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <p>标的数量：<span className="text-white">{form.assets.length}</span></p>

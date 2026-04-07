@@ -36,6 +36,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
   const dateInputRef = useRef(null)
 
   const targetMatrix = useMemo(() => (plan ? calcAllTargets(plan) : []), [plan])
+  const isOpenEnded = plan?.budgetMode === 'open-ended'
 
   useEffect(() => {
     if (!plan?.assets?.length) {
@@ -63,7 +64,9 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
     )
   }
 
-  const currentPeriod = Math.min(Number(plan.currentPeriod) || 0, Math.max(0, (Number(plan.totalPeriods) || 1) - 1))
+  const currentPeriod = isOpenEnded
+    ? Math.max(Number(plan.currentPeriod) || 0, 0)
+    : Math.min(Number(plan.currentPeriod) || 0, Math.max(0, (Number(plan.totalPeriods) || 1) - 1))
   const latestRecord = records.find((record) => record.planId === plan.id && record.periodIndex === currentPeriod - 1)
 
   const currentAssets = plan.assets.map((asset, index) => {
@@ -107,7 +110,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
     .filter((record) => record.planId === plan.id)
     .reduce((sum, record) => sum + (Number(record.totalActualAmount) || 0), 0)
   const cumulativeInvested = roundToTwo(historicalInvested + totalActualAmount)
-  const remainingBudget = roundToTwo((Number(plan.totalBudget) || 0) - cumulativeInvested)
+  const remainingBudget = isOpenEnded ? 0 : roundToTwo((Number(plan.totalBudget) || 0) - cumulativeInvested)
 
   const updateAssetState = (ticker, patch) => {
     setAssetStates((current) =>
@@ -162,7 +165,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
 
     const nextPlan = {
       ...plan,
-      currentPeriod: Math.min((Number(plan.currentPeriod) || 0) + 1, Number(plan.totalPeriods) || 1),
+      currentPeriod: (Number(plan.currentPeriod) || 0) + 1,
       assets: plan.assets.map((asset) => {
         const currentAsset = currentAssets.find((item) => item.ticker === asset.ticker)
         return {
@@ -183,31 +186,20 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
           <div>
             <p className="label">本期操作</p>
             <h2 className="mt-2 text-xl font-semibold text-white">
-              第 {currentPeriod + 1} 期 / 共 {plan.totalPeriods} 期
+              {isOpenEnded ? `第 ${currentPeriod + 1} 期 · 长期执行中` : `第 ${currentPeriod + 1} 期 / 共 ${plan.totalPeriods} 期`}
             </h2>
           </div>
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+          <button
+            type="button"
+            onClick={() => {
+              dateInputRef.current?.showPicker?.()
+              dateInputRef.current?.focus()
+            }}
+            className="flex w-fit items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 transition hover:border-accent/40 hover:bg-white/10"
+          >
             <CalendarDays size={16} className="text-accent" />
-            <button
-              type="button"
-              onClick={() => {
-                dateInputRef.current?.showPicker?.()
-                dateInputRef.current?.focus()
-              }}
-              className="text-slate-400 transition hover:text-slate-200"
-            >
-              执行日期
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                dateInputRef.current?.showPicker?.()
-                dateInputRef.current?.focus()
-              }}
-              className="font-mono text-white transition hover:text-accent"
-            >
-              {operationDate}
-            </button>
+            <span className="text-slate-400">执行日期</span>
+            <span className="font-mono text-white">{operationDate}</span>
             <input
               ref={dateInputRef}
               type="date"
@@ -217,7 +209,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
               tabIndex={-1}
               aria-label="执行日期"
             />
-          </div>
+          </button>
         </div>
         {latestRecord ? (
           <p className="mt-4 text-sm text-slate-400">上期记录日期：{latestRecord.date.slice(0, 10)}</p>
@@ -282,10 +274,16 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                 <div className="rounded-2xl border border-white/10 bg-surface p-4">
                   <p className="label">{plan.strategy === 'VA' ? 'VA目标值' : '本期固定投入'}</p>
                   <p className="mt-3 font-mono text-xl text-white">{formatMoney(asset.targetValue)}</p>
+                  {isOpenEnded && Number(plan.periodicTarget) === 0 ? (
+                    <p className="mt-2 text-xs text-slate-400">当前为灵活决定模式，这里的建议值仅作为参考。</p>
+                  ) : null}
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-surface p-4">
                   <p className="label">建议买入金额</p>
                   <p className="mt-3 font-mono text-xl text-accent">{formatMoney(asset.requiredAmount)}</p>
+                  {isOpenEnded && Number(plan.periodicTarget) === 0 ? (
+                    <p className="mt-2 text-xs text-slate-400">你可以按当期现金流和判断灵活调整实际投入。</p>
+                  ) : null}
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-surface p-4">
                   <p className="label">建议买入股数</p>
@@ -317,7 +315,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
 
       <div className="card p-5">
         <p className="label">执行决策</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {decisionOptions.map((option) => (
             <button
               key={option.value}
@@ -343,7 +341,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
           />
         </label>
 
-        <div className="mt-5 grid gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:grid-cols-3">
+        <div className={`mt-5 grid gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 ${isOpenEnded ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
           <div>
             <p className="label">本期实际投入</p>
             <p className="mt-2 font-mono text-lg text-white">{formatMoney(totalActualAmount)}</p>
@@ -352,18 +350,20 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
             <p className="label">累计投入</p>
             <p className="mt-2 font-mono text-lg text-white">{formatMoney(cumulativeInvested)}</p>
           </div>
-          <div>
-            <p className="label">剩余预算</p>
-            <p className="mt-2 font-mono text-lg text-white">{formatMoney(remainingBudget)}</p>
-          </div>
+          {!isOpenEnded ? (
+            <div>
+              <p className="label">剩余预算</p>
+              <p className="mt-2 font-mono text-lg text-white">{formatMoney(remainingBudget)}</p>
+            </div>
+          ) : null}
         </div>
 
         <button
           type="button"
           onClick={handleConfirm}
-          className="mt-5 w-full rounded-2xl bg-accent px-4 py-4 text-base font-semibold text-slate-950 transition hover:brightness-110"
+          className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-accent px-4 py-3 font-medium text-slate-950 transition hover:brightness-110"
         >
-          确认记录
+          确认记录本期操作
         </button>
       </div>
     </section>

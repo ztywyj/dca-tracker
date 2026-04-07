@@ -1,5 +1,6 @@
 const DEFAULT_RESERVE_RATIO = 0.2
 const DEFAULT_FIRST_PERIOD_RATIO = 0.5
+const OPEN_ENDED_PLACEHOLDER_PERIODS = 9999
 
 function roundToTwo(value) {
   return Number((Number(value) || 0).toFixed(2))
@@ -7,6 +8,14 @@ function roundToTwo(value) {
 
 function getPeriodsPerYear(frequency = 'monthly') {
   return frequency === 'biweekly' ? 26 : 12
+}
+
+function isOpenEndedPlan(plan = {}) {
+  return plan?.budgetMode === 'open-ended'
+}
+
+function getPeriodicGrowthRate(plan = {}) {
+  return (Number(plan.targetAnnualReturn) || 0) / getPeriodsPerYear(plan.frequency)
 }
 
 function getDeployableBudget(plan = {}) {
@@ -26,6 +35,10 @@ function getFirstPeriodRatio(plan = {}) {
 }
 
 function getAssetPeriodicContribution(assetWeight, plan = {}) {
+  if (isOpenEndedPlan(plan)) {
+    return roundToTwo((Number(plan.periodicTarget) || 0) * (Number(assetWeight) || 0))
+  }
+
   const deployableBudget = getDeployableBudget(plan)
   const totalPeriods = Math.max(1, Number(plan.totalPeriods) || 1)
   const firstPeriodRatio = getFirstPeriodRatio(plan)
@@ -37,10 +50,25 @@ function getAssetPeriodicContribution(assetWeight, plan = {}) {
 export function getTargetValue(periodIndex, assetWeight, plan = {}) {
   const normalizedPeriodIndex = Math.max(0, Number(periodIndex) || 0)
   const normalizedAssetWeight = Number(assetWeight) || 0
+  const growthRate = getPeriodicGrowthRate(plan)
+
+  if (isOpenEndedPlan(plan)) {
+    const periodicContribution = getAssetPeriodicContribution(normalizedAssetWeight, plan)
+
+    if (normalizedPeriodIndex === 0) {
+      return roundToTwo(periodicContribution)
+    }
+
+    let target = periodicContribution
+    for (let index = 1; index <= normalizedPeriodIndex; index += 1) {
+      target = target * (1 + growthRate) + periodicContribution
+    }
+
+    return roundToTwo(target)
+  }
+
   const deployableBudget = getDeployableBudget(plan)
   const firstPeriodRatio = getFirstPeriodRatio(plan)
-  const periodsPerYear = getPeriodsPerYear(plan.frequency)
-  const growthRate = (Number(plan.targetAnnualReturn) || 0) / periodsPerYear
   const firstTarget = deployableBudget * normalizedAssetWeight * firstPeriodRatio
 
   if (normalizedPeriodIndex === 0) {
@@ -72,7 +100,9 @@ export function getUpdatedShares(previousShares, actualSharesBought) {
 }
 
 export function calcAllTargets(plan = {}) {
-  const totalPeriods = Math.max(0, Number(plan.totalPeriods) || 0)
+  const totalPeriods = isOpenEndedPlan(plan)
+    ? Math.max(Number(plan.currentPeriod) || 0, OPEN_ENDED_PLACEHOLDER_PERIODS)
+    : Math.max(0, Number(plan.totalPeriods) || 0)
   const assets = Array.isArray(plan.assets) ? plan.assets : []
 
   return Array.from({ length: totalPeriods }, (_, periodIndex) =>
