@@ -3,13 +3,14 @@
 @tailwind utilities;
 
 :root {
-  color: #f3f4f6;
-  background: #0f1117;
-  font-family: 'Inter', system-ui, sans-serif;
+  color: #eef3f9;
+  background: #0d1017;
+  font-family: 'Public Sans', system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-kerning: normal;
 }
 
 * {
@@ -20,14 +21,26 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top, rgba(96, 165, 250, 0.1), transparent 30%),
-    linear-gradient(180deg, #0f1117 0%, #0b0d12 100%);
-  color: #f8fafc;
+    radial-gradient(circle at top, rgba(96, 165, 250, 0.05), transparent 24%),
+    linear-gradient(180deg, #0d1017 0%, #0b1017 100%);
+  color: #eef3f9;
 }
 
 button,
@@ -42,14 +55,30 @@ select {
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-line bg-panel/90 shadow-glow backdrop-blur;
+    @apply rounded-2xl border border-line/85 bg-panel shadow-glow;
   }
 
   .label {
-    @apply text-xs uppercase tracking-[0.24em] text-muted;
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted;
   }
 
   .value {
-    @apply font-mono text-2xl font-semibold text-white;
+    @apply font-mono text-2xl font-semibold tabular-nums text-white;
+  }
+
+  .heading-display {
+    @apply font-display text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl;
+  }
+
+  .heading-section {
+    @apply text-xl font-semibold tracking-[-0.015em] text-white;
+  }
+
+  .body-copy {
+    @apply text-sm leading-6 text-textSoft;
+  }
+
+  .terminal-chip {
+    @apply rounded-full border border-line/80 bg-elevated/80 px-3 py-1 text-xs text-textSoft;
   }
 }

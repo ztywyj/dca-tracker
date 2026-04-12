@@ -39,3 +39,18 @@
 - 升级为多计划存储与顶部计划切换，支持保留旧计划和按当前计划查看记录
 - 修复 VA 首期建议投入按 DCA 底仓计算、实际买入默认填充建议股数，并修复 Ticker 中文输入法兼容问题
 - 生成当前项目版本归档包，并初始化 Git 仓库关联 GitHub 远程以便后续版本迭代存档
+- 手动安装 Impeccable Cursor skills 到项目 `.cursor/skills`，补齐 audit、polish、typeset 等设计技能
+- 运行 Impeccable teach 前置清理，并移除其一次性 post-update cleanup 段落
+- 根据产品定位与用户场景写入 `.impeccable.md` 设计上下文，固化金融终端感与长期主义设计原则
+- 新增 `.cursor/rules/design-context.mdc`，将 Design Context 同步为项目级长期规则
+- 执行 /harden：补充 reduced motion、计划切换器与导入输入无障碍命名、增强 JSON 备份多计划导入兼容，并为盈亏/价格来源增加非颜色语义
+- 执行 /colorize：重建深色终端风调色板，统一 panel/line/elevated 语义色，并收敛图表、tooltip、标签与导入操作配色
+- 执行 /typeset：替换默认 Inter 为 Public Sans + Literata + IBM Plex Mono，并建立标题/正文/标签/数字排版层级与字距规范
+- 执行 /optimize：测量构建产物后确认 `recharts` 为体积热点，将四个主页面改为按 tab 懒加载，降低首屏下载与无关页面执行成本
+- 执行 /quieter：收敛全局辉光、背景蓝雾、指标图标高亮与筛选强调密度，让界面更克制安静
+- 执行 /polish：统一底部 tab、主按钮、选择卡、日期入口与设置页交互态，让组件状态与文案层级更一致
+- 最终视觉收口：继续清理 Dashboard / History / OperationPanel / Settings 中残留的旧色值、旧输入态与旧强调样式，统一到 line/elevated/muted/textSoft 语义系统
+- 修正本期操作页在奇数标的场景下的卡片布局：最后单张卡片在双列布局中自动居中
+- 优化本期操作页单标的场景：整组卡片区域在宽屏下限制最大宽度并居中，避免过度铺满
+- 按反馈回退单标的宽度限制，并删除执行日期下方的键盘提示文案
+- 工程封板前巡检并清理轻量残留：修正 OperationPanel 摘要区动态类名、统一剩余输入焦点样式，并继续收口 Settings 残留旧交互底色

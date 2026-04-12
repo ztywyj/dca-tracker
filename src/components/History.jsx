@@ -18,10 +18,10 @@ function formatMoney(value) {
 }
 
 function getTagClass(tag) {
-  if (tag === 'normal') return 'border-accent/30 bg-accent/10 text-accent'
-  if (tag === 'underweight') return 'border-amber-500/30 bg-amber-500/10 text-amber-300'
-  if (tag === 'paused') return 'border-red-500/30 bg-red-500/10 text-red-300'
-  return 'border-white/10 bg-white/5 text-slate-300'
+  if (tag === 'normal') return 'border-accent/22 bg-accent/8 text-sky-100'
+  if (tag === 'underweight') return 'border-warning/24 bg-warning/10 text-amber-100'
+  if (tag === 'paused') return 'border-line bg-elevated text-textSoft'
+  return 'border-line bg-elevated text-textSoft'
 }
 
 function roundToTwo(value) {
@@ -93,6 +93,31 @@ function createEditDraft(record) {
       price: Number(asset.price) || 0,
       actualShares: Number(asset.actualShares) || 0,
     })),
+  }
+}
+
+function parseBackupPayload(parsed) {
+  if (!parsed || typeof parsed !== 'object') {
+    return null
+  }
+
+  const nextPlans = Array.isArray(parsed.plans)
+    ? parsed.plans
+    : parsed.plan
+      ? [parsed.plan]
+      : []
+  const nextRecords = Array.isArray(parsed.records) ? parsed.records : []
+  const nextActivePlanId = parsed.activePlanId || nextPlans[0]?.id || null
+
+  if (!nextPlans.length && !nextRecords.length) {
+    return null
+  }
+
+  return {
+    plans: nextPlans,
+    plan: nextPlans[0] || null,
+    activePlanId: nextActivePlanId,
+    records: nextRecords,
   }
 }
 
@@ -214,9 +239,10 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
     try {
       const content = await file.text()
       const parsed = JSON.parse(content)
+      const payload = parseBackupPayload(parsed)
 
-      if (!parsed || typeof parsed !== 'object' || !('plan' in parsed) || !('records' in parsed)) {
-        window.alert('文件格式不正确，请使用本工具导出的备份文件')
+      if (!payload) {
+        window.alert('文件格式不正确，请使用本工具导出的 JSON 备份文件。')
         return
       }
 
@@ -227,18 +253,15 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
 
       cancelEditing()
       setExpandedId('')
-      onImportBackup?.({
-        plan: parsed.plan,
-        records: Array.isArray(parsed.records) ? parsed.records : [],
-      })
+      onImportBackup?.(payload)
     } catch {
-      window.alert('文件格式不正确，请使用本工具导出的备份文件')
+      window.alert('文件格式不正确，请使用本工具导出的 JSON 备份文件。')
     }
   }
 
   if (!plan) {
     return (
-      <section className="card p-6 text-center text-slate-300">
+      <section className="card p-6 text-center text-textSoft">
         请先创建计划，历史记录会在执行后自动累积。
       </section>
     )
@@ -250,17 +273,17 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="label">执行档案</p>
-            <h2 className="mt-2 text-xl font-semibold text-white">历史记录</h2>
-            <p className="mt-2 text-sm text-slate-400">
-              {isOpenEnded ? '当前为无限定投模式，历史会持续累计，不设结束期数。' : '当前为固定预算模式，历史记录会跟随总期数推进。'}
-            </p>
+            <h2 className="heading-section mt-2">历史记录</h2>
+                        <p className="body-copy mt-2">
+                          {isOpenEnded ? '当前为无限定投模式，历史会持续累计，不设结束期数。' : '当前为固定预算模式，历史记录会跟随总期数推进。'}
+                        </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={handleExportCsv}
               disabled={!planRecords.length}
-              className="inline-flex items-center gap-2 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-2 text-sm text-accent transition hover:bg-accent/20 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-slate-500"
+              className="inline-flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm text-slate-100 transition hover:border-accent/28 hover:bg-accent/14 disabled:cursor-not-allowed disabled:border-line disabled:bg-elevated disabled:text-muted"
             >
               <Download size={16} />
               导出 CSV
@@ -268,7 +291,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
             <button
               type="button"
               onClick={handleExportJson}
-              className="inline-flex items-center gap-2 rounded-2xl border border-sky-400/30 bg-sky-400/10 px-4 py-2 text-sm text-sky-300 transition hover:bg-sky-400/20"
+              className="inline-flex items-center gap-2 rounded-2xl border border-line bg-elevated px-4 py-2 text-sm text-textSoft transition hover:border-info/30 hover:bg-info/10 hover:text-sky-200"
             >
               <Download size={16} />
               导出 JSON
@@ -276,7 +299,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
             <button
               type="button"
               onClick={handleImportClick}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-transparent px-4 py-2 text-sm text-slate-200 transition hover:bg-white/5"
+              className="inline-flex items-center gap-2 rounded-2xl border border-line bg-transparent px-4 py-2 text-sm text-textSoft transition hover:border-accent/30 hover:bg-elevated"
             >
               <FileUp size={16} />
               导入 JSON
@@ -286,6 +309,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
               type="file"
               accept=".json"
               onChange={handleImportFile}
+              aria-label="选择要导入的 JSON 备份文件"
               className="hidden"
             />
           </div>
@@ -297,9 +321,9 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
               key={filter.value}
               type="button"
               onClick={() => setActiveFilter(filter.value)}
-              className={`rounded-full px-4 py-2 text-sm transition ${
-                activeFilter === filter.value ? 'bg-accent text-slate-950' : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
-              }`}
+                          className={`rounded-full px-4 py-2 text-sm transition ${
+                            activeFilter === filter.value ? 'border border-accent/18 bg-accent/10 text-slate-100' : 'border border-line/80 bg-elevated/75 text-textSoft hover:border-line hover:bg-panel'
+                          }`}
             >
               {filter.label}
             </button>
@@ -318,20 +342,20 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-3">
                       <h3 className="text-lg font-semibold text-white">第 {record.periodIndex + 1} 期</h3>
-                      <span className="font-mono text-sm text-slate-400">{record.date.slice(0, 10)}</span>
+                      <span className="font-mono text-sm text-muted">{record.date.slice(0, 10)}</span>
                       <span className={`rounded-full border px-3 py-1 text-xs ${getTagClass(record.tag)}`}>
                         {filters.find((filter) => filter.value === record.tag)?.label || record.tag}
                       </span>
                     </div>
                     <p className="font-mono text-2xl text-white">{formatMoney(record.totalActualAmount)}</p>
-                    <p className="line-clamp-2 max-w-3xl text-sm text-slate-400">{record.note || '本期未填写备注。'}</p>
+                    <p className="line-clamp-2 max-w-3xl text-sm text-textSoft">{record.note || '本期未填写备注。'}</p>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => setExpandedId(expanded ? '' : record.id)}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition hover:bg-white/10"
+                      className="inline-flex items-center gap-2 rounded-2xl border border-line bg-elevated px-4 py-2 text-sm text-textSoft transition hover:border-accent/30 hover:bg-panel"
                     >
                       {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       {expanded ? '收起详情' : '展开详情'}
@@ -339,7 +363,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                     <button
                       type="button"
                       onClick={() => startEditing(record)}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300 transition hover:bg-emerald-500/20"
+                      className="inline-flex items-center gap-2 rounded-2xl border border-line bg-elevated px-4 py-2 text-sm text-positive transition hover:border-positive/35 hover:bg-positive/10"
                     >
                       <Pencil size={16} />
                       编辑
@@ -347,7 +371,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                     <button
                       type="button"
                       onClick={() => handleDelete(record)}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300 transition hover:bg-red-500/20"
+                      className="inline-flex items-center gap-2 rounded-2xl border border-line bg-elevated px-4 py-2 text-sm text-negative transition hover:border-negative/35 hover:bg-negative/10"
                     >
                       <Trash2 size={16} />
                       删除
@@ -356,7 +380,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                 </div>
 
                 {editing ? (
-                  <div className="mt-5 space-y-4 border-t border-white/10 pt-5">
+                  <div className="mt-5 space-y-4 border-t border-line pt-5">
                     <div className="grid gap-3 sm:grid-cols-2">
                       {record.assets.map((asset) => {
                         const draftAsset = editDraft.assets.find((item) => item.ticker === asset.ticker) || {
@@ -365,33 +389,33 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                         }
 
                         return (
-                          <div key={asset.ticker} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                          <div key={asset.ticker} className="rounded-3xl border border-line bg-elevated p-4">
                             <p className="font-mono text-base text-white">{asset.ticker}</p>
                             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                               <label className="space-y-2">
-                                <span className="text-sm text-slate-300">操作价格</span>
+                                <span className="text-sm text-textSoft">操作价格</span>
                                 <input
                                   type="number"
                                   min="0"
                                   step="0.01"
                                   value={draftAsset.price}
                                   onChange={(event) => updateDraftAsset(asset.ticker, { price: Number(event.target.value) })}
-                                  className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 font-mono text-white outline-none transition focus:border-accent"
+                                  className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 font-mono text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                                 />
                               </label>
                               <label className="space-y-2">
-                                <span className="text-sm text-slate-300">实际买入股数</span>
+                                <span className="text-sm text-textSoft">实际买入股数</span>
                                 <input
                                   type="number"
                                   min="0"
                                   step="1"
                                   value={draftAsset.actualShares}
                                   onChange={(event) => updateDraftAsset(asset.ticker, { actualShares: Number(event.target.value) })}
-                                  className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 font-mono text-white outline-none transition focus:border-accent"
+                                  className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 font-mono text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                                 />
                               </label>
                             </div>
-                            <p className="mt-3 text-sm text-slate-400">
+                            <p className="mt-3 text-sm text-textSoft">
                               实际投入：<span className="font-mono text-white">{formatMoney(roundToTwo((Number(draftAsset.price) || 0) * (Number(draftAsset.actualShares) || 0)))}</span>
                             </p>
                           </div>
@@ -401,7 +425,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <label className="space-y-2">
-                        <span className="text-sm text-slate-300">决策标签</span>
+                        <span className="text-sm text-textSoft">决策标签</span>
                         <select
                           value={editDraft.tag}
                           onChange={(event) => setEditDraft((current) => ({ ...current, tag: event.target.value }))}
@@ -415,7 +439,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                         </select>
                       </label>
                       <label className="space-y-2">
-                        <span className="text-sm text-slate-300">备注</span>
+                        <span className="text-sm text-textSoft">备注</span>
                         <textarea
                           rows="4"
                           value={editDraft.note}
@@ -429,47 +453,47 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                       <button
                         type="button"
                         onClick={cancelEditing}
-                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10"
+                        className="rounded-2xl border border-line/80 bg-elevated/70 px-4 py-3 text-sm text-textSoft transition hover:border-line hover:bg-panel"
                       >
                         取消
                       </button>
                       <button
                         type="button"
                         onClick={() => handleSaveEdit(record)}
-                        className="rounded-2xl bg-accent px-4 py-3 text-sm font-medium text-slate-950 transition hover:brightness-110"
+                        className="rounded-2xl border border-accent/20 bg-accent/12 px-4 py-3 text-sm font-medium text-slate-100 transition hover:border-accent/28 hover:bg-accent/16"
                       >
                         保存
                       </button>
                     </div>
                   </div>
                 ) : expanded ? (
-                  <div className="mt-5 space-y-3 border-t border-white/10 pt-5">
+                  <div className="mt-5 space-y-3 border-t border-line pt-5">
                     {record.assets.map((asset) => (
-                      <div key={asset.ticker} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div key={asset.ticker} className="rounded-2xl border border-line/80 bg-elevated/70 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
                           <div>
                             <p className="font-mono text-base text-white">{asset.ticker}</p>
-                            <p className="mt-1 text-xs text-slate-400">价格来源：{asset.priceSource === 'auto' ? '自动' : '手动'}</p>
+                            <p className="mt-1 text-xs text-muted">价格来源：{asset.priceSource === 'auto' ? '自动' : '手动'}</p>
                           </div>
-                          <div className="text-right text-sm text-slate-300">
+                          <div className="text-right text-sm text-textSoft">
                             <p>价格：<span className="font-mono text-white">{formatMoney(asset.price)}</span></p>
                             <p>目标值：<span className="font-mono text-white">{formatMoney(asset.targetValue)}</span></p>
                           </div>
                         </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-4">
-                          <div className="rounded-2xl border border-white/10 bg-surface p-3">
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="rounded-2xl border border-line/80 bg-surface p-3">
                             <p className="label">前持仓价值</p>
                             <p className="mt-2 font-mono text-white">{formatMoney(asset.currentValueBefore)}</p>
                           </div>
-                          <div className="rounded-2xl border border-white/10 bg-surface p-3">
+                          <div className="rounded-2xl border border-line/80 bg-surface p-3">
                             <p className="label">建议买入</p>
                             <p className="mt-2 font-mono text-white">{formatMoney(asset.requiredAmount)}</p>
                           </div>
-                          <div className="rounded-2xl border border-white/10 bg-surface p-3">
+                          <div className="rounded-2xl border border-line/80 bg-surface p-3">
                             <p className="label">建议股数</p>
                             <p className="mt-2 font-mono text-white">{asset.suggestedShares}</p>
                           </div>
-                          <div className="rounded-2xl border border-white/10 bg-surface p-3">
+                          <div className="rounded-2xl border border-line/80 bg-surface p-3">
                             <p className="label">实际买入</p>
                             <p className="mt-2 font-mono text-white">{asset.actualShares} 股 / {formatMoney(asset.actualAmount)}</p>
                           </div>
@@ -482,7 +506,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
             )
           })
         ) : (
-          <div className="card p-8 text-center text-slate-400">
+          <div className="card p-8 text-center text-muted">
             当前筛选条件下还没有记录。
           </div>
         )}

@@ -1,20 +1,30 @@
-import { useMemo, useState } from 'react'
-import Dashboard from './components/Dashboard'
-import History from './components/History'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import Layout from './components/Layout'
-import OperationPanel from './components/OperationPanel'
-import Settings from './components/Settings'
 import { getPeriodicAmount, getSuggestedShares as getDcaSuggestedShares } from './utils/dcaCalc'
 import { calcAllTargets, getRequiredInvestment, getSuggestedShares as getVaSuggestedShares } from './utils/vaCalc'
 import { usePlan } from './hooks/usePlan'
 import { useRecords } from './hooks/useRecords'
 import { clearAll } from './utils/storage'
 
+const Dashboard = lazy(() => import('./components/Dashboard'))
+const History = lazy(() => import('./components/History'))
+const OperationPanel = lazy(() => import('./components/OperationPanel'))
+const Settings = lazy(() => import('./components/Settings'))
+
 const tabs = {
   dashboard: Dashboard,
   operation: OperationPanel,
   history: History,
   settings: Settings,
+}
+
+function ScreenFallback() {
+  return (
+    <section className="card p-6">
+      <p className="label">页面加载中</p>
+      <p className="body-copy mt-3">正在准备当前页面内容，请稍候。</p>
+    </section>
+  )
 }
 
 function roundToTwo(value) {
@@ -208,18 +218,20 @@ export default function App() {
       activePlanId={activePlanId || ''}
       onChangeActivePlan={setActivePlan}
     >
-      <Screen
-        plan={plan}
-        plans={plans}
-        records={records}
-        onSavePlan={handleSavePlan}
-        onSaveRecord={handleSaveRecord}
-        onDeleteRecord={handleDeleteRecord}
-        onEditRecord={handleEditRecord}
-        onImportBackup={handleImportBackup}
-        onClearAllData={handleClearAllData}
-        onNavigate={setActiveTab}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <Screen
+          plan={plan}
+          plans={plans}
+          records={records}
+          onSavePlan={handleSavePlan}
+          onSaveRecord={handleSaveRecord}
+          onDeleteRecord={handleDeleteRecord}
+          onEditRecord={handleEditRecord}
+          onImportBackup={handleImportBackup}
+          onClearAllData={handleClearAllData}
+          onNavigate={setActiveTab}
+        />
+      </Suspense>
     </Layout>
   )
 }

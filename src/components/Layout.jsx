@@ -16,17 +16,19 @@ export default function Layout({ activeTab, onChangeTab, children, plans = [], a
         <header className="card overflow-hidden p-4 sm:p-5">
           <div className="min-w-0">
             <p className="label">个人定投面板</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">DCA Tracker</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+            <h1 className="heading-display mt-2">DCA Tracker</h1>
+            <p className="body-copy mt-3 max-w-2xl">
               跟踪每期定投执行、账户累计投入与收益变化，用更清晰的视角管理长期计划。
             </p>
             {hasPlans ? (
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                <span className="text-sm text-slate-400">当前计划</span>
+                <label htmlFor="active-plan-select" className="text-sm text-muted">当前计划</label>
                 <select
+                  id="active-plan-select"
+                  aria-label="切换当前计划"
                   value={activePlanId}
                   onChange={(event) => onChangeActivePlan?.(event.target.value)}
-                  className="rounded-2xl border border-white/10 bg-surface px-4 py-2 text-sm text-white outline-none transition focus:border-accent"
+                  className="rounded-2xl border border-line/80 bg-surface px-4 py-2 text-sm text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                 >
                   {plans.map((plan) => (
                     <option key={plan.id} value={plan.id}>
@@ -53,7 +55,7 @@ export default function Layout({ activeTab, onChangeTab, children, plans = [], a
                 type="button"
                 onClick={() => onChangeTab(item.key)}
                 className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-2 py-2 transition sm:px-3 ${
-                  active ? 'bg-accent text-white shadow-glow' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  active ? 'border border-accent/18 bg-accent/10 text-slate-100 shadow-none' : 'border border-transparent text-muted hover:border-line/80 hover:bg-elevated/70 hover:text-white'
                 }`}
               >
                 <Icon size={18} />

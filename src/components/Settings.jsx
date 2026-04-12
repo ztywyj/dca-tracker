@@ -243,8 +243,8 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="label">计划配置</p>
-            <h2 className="mt-2 text-xl font-semibold text-white">计划设置</h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <h2 className="heading-section mt-2">计划设置</h2>
+            <p className="body-copy mt-2">
               {plan ? `当前计划：${plan.name} · 共 ${plans.length || 1} 份计划` : '首次进入请先创建计划，保存后将进入总览页。'}
             </p>
           </div>
@@ -253,14 +253,14 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
               <button
                 type="button"
                 onClick={() => setForm(normalizeFormPlan(plan))}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
+                className="rounded-2xl border border-line/80 bg-elevated/70 px-4 py-2 text-sm text-white transition hover:border-line hover:bg-panel"
               >
                 修改计划
               </button>
               <button
                 type="button"
                 onClick={handleCreateNew}
-                className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-2 text-sm text-accent transition hover:bg-accent/20"
+                className="rounded-2xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm text-slate-100 transition hover:border-accent/28 hover:bg-accent/14"
               >
                 新建计划
               </button>
@@ -270,24 +270,24 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
 
         <div className="mt-6 grid gap-5">
           <label className="space-y-2">
-            <span className="text-sm text-slate-300">计划名称</span>
+            <span className="text-sm text-textSoft">计划名称</span>
             <input
               type="text"
               value={form.name}
               placeholder="例如：2026美股VA定投"
               onChange={(event) => updateField('name', event.target.value)}
-              className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent"
+              className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
             />
           </label>
 
           <div className="space-y-3">
-            <span className="text-sm text-slate-300">预算模式</span>
+            <span className="text-sm text-textSoft">预算模式</span>
             <div className="grid gap-3 sm:grid-cols-2">
               {budgetModeOptions.map((option) => (
                 <label
                   key={option.value}
                   className={`rounded-2xl border px-4 py-3 transition ${
-                    form.budgetMode === option.value ? 'border-accent bg-accent/10 text-white' : 'border-white/10 bg-white/5 text-slate-300'
+                    form.budgetMode === option.value ? 'border-accent/20 bg-accent/10 text-slate-100' : 'border-line/80 bg-elevated/70 text-textSoft'
                   }`}
                 >
                   <input
@@ -299,20 +299,20 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                     className="sr-only"
                   />
                   <div className="font-medium">{option.label}</div>
-                  <p className="mt-2 text-xs text-slate-400">{option.description}</p>
+                  <p className="mt-2 text-xs text-muted">{option.description}</p>
                 </label>
               ))}
             </div>
           </div>
 
           <div className="space-y-3">
-            <span className="text-sm text-slate-300">策略类型</span>
+            <span className="text-sm text-textSoft">策略类型</span>
             <div className="grid gap-3 sm:grid-cols-2">
               {strategyOptions.map((option) => (
                 <label
                   key={option.value}
                   className={`rounded-2xl border px-4 py-3 transition ${
-                    form.strategy === option.value ? 'border-accent bg-accent/10 text-white' : 'border-white/10 bg-white/5 text-slate-300'
+                    form.strategy === option.value ? 'border-accent/20 bg-accent/10 text-slate-100' : 'border-line/80 bg-elevated/70 text-textSoft'
                   }`}
                 >
                   <input
@@ -325,7 +325,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                   />
                   <div className="font-medium">{option.label}</div>
                   {form.strategy === option.value ? (
-                    <p className="mt-2 text-xs text-slate-400">
+                    <p className="mt-2 text-xs text-muted">
                       {option.value === 'VA'
                         ? '根据市值与目标的差距决定每期投多少——涨了少买，跌了多买，自动抄底。'
                         : '每期固定投入相同金额，不管涨跌，纪律执行，适合懒人长期持有。'}
@@ -337,18 +337,18 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
           </div>
 
           {isOpenEnded ? (
-            <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="space-y-3 rounded-2xl border border-line/80 bg-elevated/70 p-4">
               <label className="space-y-2 block">
-                <span className="text-sm text-slate-300">每期计划投入金额（美元）</span>
+                <span className="text-sm text-textSoft">每期计划投入金额（美元）</span>
                 <input
                   type="number"
                   min="0"
                   value={form.periodicTarget}
                   onChange={(event) => updateField('periodicTarget', Number(event.target.value))}
-                  className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent"
+                  className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                 />
               </label>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-textSoft">
                 实际每期可多可少，这里填你的目标金额，仅用于生成建议，不做硬性限制。
               </p>
             </div>
@@ -356,31 +356,31 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
             <>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="space-y-2">
-                  <span className="text-sm text-slate-300">总预算（美元）</span>
+                  <span className="text-sm text-textSoft">总预算（美元）</span>
                   <input
                     type="number"
                     min="0"
                     value={form.totalBudget}
                     onChange={(event) => updateField('totalBudget', Number(event.target.value))}
-                    className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent"
+                    className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                   />
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm text-slate-300">总期数</span>
+                  <span className="text-sm text-textSoft">总期数</span>
                   <input
                     type="number"
                     min="1"
                     value={form.totalPeriods}
                     onChange={(event) => updateField('totalPeriods', Number(event.target.value))}
-                    className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent"
+                    className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                   />
                 </label>
               </div>
 
-              <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="space-y-3 rounded-2xl border border-line/80 bg-elevated/70 p-4">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm text-slate-300">保留现金比例</span>
+                  <span className="text-sm text-textSoft">保留现金比例</span>
                   <span className="font-mono text-white">{Math.round((Number(form.reserveRatio) || 0) * 100)}%</span>
                 </div>
                 <input
@@ -392,7 +392,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                   onChange={(event) => updateField('reserveRatio', Number(event.target.value))}
                   className="w-full accent-blue-400"
                 />
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-textSoft">
                   保留 {formatMoney(reservedCash)}，可投 {formatMoney(deployableCash)}
                 </p>
               </div>
@@ -401,11 +401,11 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-2">
-              <span className="text-sm text-slate-300">定投频率</span>
+              <span className="text-sm text-textSoft">定投频率</span>
               <select
                 value={form.frequency}
                 onChange={(event) => updateField('frequency', event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent"
+                className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
               >
                 {frequencyOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -416,20 +416,20 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
             </label>
 
             {form.strategy === 'VA' ? (
-              <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="space-y-3 rounded-2xl border border-line/80 bg-elevated/70 p-4">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm text-slate-300">目标年化收益率</span>
+                  <span className="text-sm text-textSoft">目标年化收益率</span>
                   <button
                     type="button"
                     onClick={handleEstimateYield}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-accent/30 bg-accent/10 px-3 py-2 text-xs text-accent transition hover:bg-accent/20"
+                    className="inline-flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-3 py-2 text-xs text-slate-100 transition hover:border-accent/28 hover:bg-accent/14"
                   >
                     <Sparkles size={14} />
                     自动测算
                   </button>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm text-slate-300">当前建议值</span>
+                  <span className="text-sm text-textSoft">当前建议值</span>
                   <span className="font-mono text-white">{formatPercent(form.targetAnnualReturn)}</span>
                 </div>
                 <input
@@ -442,7 +442,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                   className="w-full accent-blue-400"
                 />
                 {estimatedRange ? (
-                  <div className="space-y-2 text-xs text-slate-400">
+                  <div className="space-y-2 text-xs text-muted">
                     <p>
                       根据组合历史表现估算，建议范围 {formatPercent(estimatedRange.minYield)}~{formatPercent(estimatedRange.maxYield)}（上下浮动5%），可手动调整
                     </p>
@@ -453,22 +453,22 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                 ) : null}
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
+              <div className="rounded-2xl border border-line/80 bg-elevated/70 p-4 text-sm text-textSoft">
                 DCA 策略不需要设置目标年化收益率。
               </div>
             )}
           </div>
 
-          <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="space-y-4 rounded-2xl border border-line/80 bg-elevated/70 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-white">资产配置</p>
-                <p className="mt-1 text-xs text-slate-400">所有权重之和必须等于 100%</p>
+                <p className="mt-1 text-xs text-muted">所有权重之和必须等于 100%</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAssetForm((current) => !current)}
-                className="inline-flex items-center gap-2 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-2 text-sm text-accent transition hover:bg-accent/20"
+                className="inline-flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm text-slate-100 transition hover:border-accent/28 hover:bg-accent/14"
               >
                 <Plus size={16} />
                 添加标的
@@ -476,28 +476,28 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
             </div>
 
             {showAssetForm ? (
-              <div className="grid gap-3 rounded-2xl border border-white/10 bg-surface p-4 sm:grid-cols-2">
+              <div className="grid gap-3 rounded-2xl border border-line/80 bg-surface p-4 sm:grid-cols-2">
                 <label className="space-y-2">
-                  <span className="text-sm text-slate-300">Ticker</span>
+                  <span className="text-sm text-textSoft">Ticker</span>
                   <input
                     type="text"
                     value={assetDraft.ticker}
                     onChange={(event) => setAssetDraft((current) => ({ ...current, ticker: event.target.value }))}
-                    className="w-full rounded-2xl border border-white/10 bg-panel px-4 py-3 text-white outline-none transition focus:border-accent"
+                    className="w-full rounded-2xl border border-line/80 bg-panel px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                   />
                 </label>
                 <label className="space-y-2">
-                  <span className="text-sm text-slate-300">显示名称</span>
+                  <span className="text-sm text-textSoft">显示名称</span>
                   <input
                     type="text"
                     value={assetDraft.name}
                     onChange={(event) => setAssetDraft((current) => ({ ...current, name: event.target.value }))}
-                    className="w-full rounded-2xl border border-white/10 bg-panel px-4 py-3 text-white outline-none transition focus:border-accent"
+                    className="w-full rounded-2xl border border-line/80 bg-panel px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                   />
                 </label>
                 <div className="space-y-3 sm:col-span-2">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm text-slate-300">权重</span>
+                    <span className="text-sm text-textSoft">权重</span>
                     <span className="font-mono text-white">{Math.round((Number(assetDraft.weight) || 0) * 100)}%</span>
                   </div>
                   <input
@@ -514,7 +514,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                   <button
                     type="button"
                     onClick={saveAssetDraft}
-                    className="rounded-2xl bg-accent px-4 py-2 text-sm font-medium text-slate-950 transition hover:brightness-110"
+                    className="rounded-2xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-accent/28 hover:bg-accent/14"
                   >
                     添加到计划
                   </button>
@@ -525,11 +525,11 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
             <div className="space-y-3">
               {form.assets.length ? (
                 form.assets.map((asset) => (
-                  <div key={asset.ticker} className="rounded-2xl border border-white/10 bg-surface p-4">
+                  <div key={asset.ticker} className="rounded-2xl border border-line/80 bg-surface p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="font-mono text-base text-white">{asset.ticker}</p>
-                        <p className="text-xs text-slate-400">{asset.name}</p>
+                        <p className="text-xs text-muted">{asset.name}</p>
                       </div>
                       <button
                         type="button"
@@ -541,7 +541,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                       </button>
                     </div>
                     <div className="mt-4 space-y-2">
-                      <div className="flex items-center justify-between gap-4 text-sm text-slate-300">
+                      <div className="flex items-center justify-between gap-4 text-sm text-textSoft">
                         <span>权重</span>
                         <span className="font-mono text-white">{Math.round((Number(asset.weight) || 0) * 100)}%</span>
                       </div>
@@ -558,7 +558,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-slate-500">
+                <div className="rounded-2xl border border-dashed border-line/80 px-4 py-6 text-center text-sm text-muted">
                   还没有添加标的，请至少添加一个资产。
                 </div>
               )}
@@ -575,21 +575,21 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
       <aside className="card p-5">
         <p className="label">计划概览</p>
         <h3 className="mt-2 text-xl font-semibold text-white">保存前检查</h3>
-        <div className="mt-6 space-y-4 text-sm leading-7 text-slate-300">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="mt-6 space-y-4 text-sm leading-7 text-textSoft">
+          <div className="rounded-2xl border border-line/80 bg-elevated/70 p-4">
             <p>预算模式：<span className="font-medium text-white">{isOpenEnded ? '无限定投' : '固定预算'}</span></p>
             <p>策略：<span className="font-medium text-white">{form.strategy}</span></p>
             <p>频率：<span className="font-medium text-white">{form.frequency === 'biweekly' ? '双周' : '月'}</span></p>
             {isOpenEnded ? (
-              <p>每期目标：<span className="font-mono text-accent">{formatMoney(form.periodicTarget)}</span></p>
+              <p>每期目标：<span className="font-mono text-slate-100">{formatMoney(form.periodicTarget)}</span></p>
             ) : (
               <>
                 <p>总预算：<span className="font-mono text-white">{formatMoney(form.totalBudget)}</span></p>
-                <p>可投资金：<span className="font-mono text-accent">{formatMoney(deployableCash)}</span></p>
+                <p>可投资金：<span className="font-mono text-slate-100">{formatMoney(deployableCash)}</span></p>
               </>
             )}
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="rounded-2xl border border-line/80 bg-elevated/70 p-4">
             <p>标的数量：<span className="text-white">{form.assets.length}</span></p>
             <p>当前期数：<span className="text-white">第 {Number(form.currentPeriod) + 1} 期</span></p>
             <p>目标年化：<span className="text-white">{form.strategy === 'VA' ? `${Math.round((Number(form.targetAnnualReturn) || 0) * 100)}%` : '不适用'}</span></p>
@@ -598,7 +598,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
             type="button"
             onClick={handleSave}
             disabled={!canSave}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-4 py-3 font-medium text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-accent/20 bg-accent/12 px-4 py-3 font-medium text-slate-100 transition hover:border-accent/28 hover:bg-accent/16 disabled:cursor-not-allowed disabled:border-line disabled:bg-elevated disabled:text-muted"
           >
             <Save size={18} />
             保存计划
