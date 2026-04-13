@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Plus, Save, Sparkles, Trash2 } from 'lucide-react'
 import { estimateTargetYield } from '../utils/yieldEstimator'
+import { formatNumericInput, normalizeNumericInput } from '../utils/numericInput'
 
 const strategyOptions = [
   { value: 'VA', label: 'VA定投' },
@@ -48,15 +49,21 @@ function createDraftPlan() {
 function normalizeFormPlan(source) {
   const base = source ? { ...source, assets: [...(source.assets || [])] } : createDraftPlan()
   const budgetMode = base.budgetMode === 'open-ended' ? 'open-ended' : 'fixed'
+  const hasPeriodicTarget = base.periodicTarget !== '' && base.periodicTarget !== null && base.periodicTarget !== undefined
+  const hasTotalBudget = base.totalBudget !== '' && base.totalBudget !== null && base.totalBudget !== undefined
+  const hasTotalPeriods = base.totalPeriods !== '' && base.totalPeriods !== null && base.totalPeriods !== undefined
 
   return {
     ...createDraftPlan(),
     ...base,
     budgetMode,
-    periodicTarget: Number(base.periodicTarget) || 0,
+    periodicTarget: hasPeriodicTarget ? formatNumericInput(base.periodicTarget) : '',
+    totalBudget: hasTotalBudget ? formatNumericInput(base.totalBudget) : '',
     totalPeriods: budgetMode === 'open-ended'
-      ? Math.max(Number(base.totalPeriods) || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)
-      : Math.max(1, Number(base.totalPeriods) || 1),
+      ? formatNumericInput(Math.max(Number(base.totalPeriods) || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS), { integerOnly: true })
+      : hasTotalPeriods
+        ? formatNumericInput(Math.max(1, Number(base.totalPeriods) || 1), { integerOnly: true })
+        : '',
   }
 }
 
@@ -64,7 +71,7 @@ function createAssetDraft() {
   return {
     ticker: '',
     name: '',
-    weight: 0.1,
+    weight: 1,
     currentShares: 0,
   }
 }
@@ -86,6 +93,26 @@ function generateId() {
   return `plan-${Date.now()}`
 }
 
+function rebalanceWeights(assets = []) {
+  if (!assets.length) {
+    return []
+  }
+
+  const equalWeight = 1 / assets.length
+  const rounded = assets.map((asset) => ({
+    ...asset,
+    weight: Number(equalWeight.toFixed(4)),
+  }))
+  const totalWeight = rounded.reduce((sum, asset) => sum + asset.weight, 0)
+  const diff = Number((1 - totalWeight).toFixed(4))
+
+  if (rounded.length) {
+    rounded[rounded.length - 1].weight = Number((rounded[rounded.length - 1].weight + diff).toFixed(4))
+  }
+
+  return rounded
+}
+
 export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData, plans = [] }) {
   const [form, setForm] = useState(() => normalizeFormPlan(plan))
   const [showAssetForm, setShowAssetForm] = useState(false)
@@ -105,17 +132,25 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
   )
 
   const isOpenEnded = form.budgetMode === 'open-ended'
-  const reservedCash = (Number(form.totalBudget) || 0) * (Number(form.reserveRatio) || 0)
-  const deployableCash = (Number(form.totalBudget) || 0) - reservedCash
+  const totalBudgetValue = Number(form.totalBudget) || 0
+  const totalPeriodsValue = Number(form.totalPeriods) || 0
+  const periodicTargetValue = Number(form.periodicTarget) || 0
+  const reservedCash = totalBudgetValue * (Number(form.reserveRatio) || 0)
+  const deployableCash = totalBudgetValue - reservedCash
   const isWeightValid = form.assets.length > 0 && Math.abs(totalWeight - 1) < 0.001
-  const hasValidBudget = isOpenEnded ? Number(form.periodicTarget) >= 0 : Number(form.totalBudget) > 0 && Number(form.totalPeriods) > 0
+  const hasValidBudget = isOpenEnded ? periodicTargetValue >= 0 : totalBudgetValue > 0 && totalPeriodsValue > 0
   const canSave = form.name.trim() && hasValidBudget && isWeightValid
 
   const updateField = (key, value) => {
     setForm((current) => {
+      const normalizedValue = key === 'periodicTarget' || key === 'totalBudget'
+        ? normalizeNumericInput(value)
+        : key === 'totalPeriods'
+          ? normalizeNumericInput(value, { integerOnly: true })
+          : value
       const next = {
         ...current,
-        [key]: value,
+        [key]: normalizedValue,
       }
 
       if (key === 'budgetMode') {
@@ -123,8 +158,9 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
           ...next,
           budgetMode: value,
           totalPeriods: value === 'open-ended'
-            ? Math.max(Number(current.totalPeriods) || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)
-            : Math.max(1, Number(current.totalPeriods) || 24),
+            ? String(Math.max(Number(current.totalPeriods) || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS))
+            : String(Math.max(1, Number(current.totalPeriods) || 12)),
+          totalBudget: value === 'open-ended' ? '0' : current.totalBudget,
         }
       }
 
@@ -137,9 +173,8 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
       return
     }
 
-    setForm((current) => ({
-      ...current,
-      assets: [
+    setForm((current) => {
+      const nextAssets = rebalanceWeights([
         ...current.assets,
         {
           ticker: assetDraft.ticker.trim().toUpperCase(),
@@ -147,8 +182,13 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
           weight: Number(assetDraft.weight) || 0,
           currentShares: Number(assetDraft.currentShares) || 0,
         },
-      ],
-    }))
+      ])
+
+      return {
+        ...current,
+        assets: nextAssets,
+      }
+    })
 
     setAssetDraft(createAssetDraft())
     setShowAssetForm(false)
@@ -157,7 +197,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
   const removeAsset = (ticker) => {
     setForm((current) => ({
       ...current,
-      assets: current.assets.filter((asset) => asset.ticker !== ticker),
+      assets: rebalanceWeights(current.assets.filter((asset) => asset.ticker !== ticker)),
     }))
   }
 
@@ -194,12 +234,12 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
       id: form.id || generateId(),
       name: form.name.trim(),
       budgetMode: isOpenEnded ? 'open-ended' : 'fixed',
-      totalBudget: isOpenEnded ? 0 : (Number(form.totalBudget) || 0),
+      totalBudget: isOpenEnded ? 0 : totalBudgetValue,
       reserveRatio: isOpenEnded ? 0 : (Number(form.reserveRatio) || 0.2),
       totalPeriods: isOpenEnded
-        ? Math.max(Number(form.totalPeriods) || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)
-        : (Number(form.totalPeriods) || 1),
-      periodicTarget: isOpenEnded ? (Number(form.periodicTarget) || 0) : (Number(form.periodicTarget) || 0),
+        ? Math.max(totalPeriodsValue || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)
+        : totalPeriodsValue,
+      periodicTarget: periodicTargetValue,
       currentPeriod: Number(form.currentPeriod) || 0,
       targetAnnualReturn: Number(form.targetAnnualReturn) || 0.25,
       createdAt: form.createdAt || new Date().toISOString(),
@@ -217,7 +257,12 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
   }
 
   const handleCreateNew = () => {
-    setForm(createDraftPlan())
+    setForm({
+      ...createDraftPlan(),
+      totalBudget: '10000',
+      totalPeriods: '12',
+      periodicTarget: '1000',
+    })
     setShowAssetForm(false)
     setAssetDraft(createAssetDraft())
     setEstimatedRange(null)
@@ -230,7 +275,12 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
     }
 
     onClearAllData?.()
-    setForm(createDraftPlan())
+    setForm({
+      ...createDraftPlan(),
+      totalBudget: '10000',
+      totalPeriods: '12',
+      periodicTarget: '1000',
+    })
     setShowAssetForm(false)
     setAssetDraft(createAssetDraft())
     setEstimatedRange(null)
@@ -341,10 +391,11 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
               <label className="space-y-2 block">
                 <span className="text-sm text-textSoft">每期计划投入金额（美元）</span>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={form.periodicTarget}
-                  onChange={(event) => updateField('periodicTarget', Number(event.target.value))}
+                  onChange={(event) => updateField('periodicTarget', event.target.value)}
+                  onBlur={() => updateField('periodicTarget', formatNumericInput(form.periodicTarget))}
                   className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                 />
               </label>
@@ -358,10 +409,11 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                 <label className="space-y-2">
                   <span className="text-sm text-textSoft">总预算（美元）</span>
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={form.totalBudget}
-                    onChange={(event) => updateField('totalBudget', Number(event.target.value))}
+                    onChange={(event) => updateField('totalBudget', event.target.value)}
+                    onBlur={() => updateField('totalBudget', formatNumericInput(form.totalBudget))}
                     className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                   />
                 </label>
@@ -369,10 +421,11 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                 <label className="space-y-2">
                   <span className="text-sm text-textSoft">总期数</span>
                   <input
-                    type="number"
-                    min="1"
+                    type="text"
+                    inputMode="numeric"
                     value={form.totalPeriods}
-                    onChange={(event) => updateField('totalPeriods', Number(event.target.value))}
+                    onChange={(event) => updateField('totalPeriods', event.target.value)}
+                    onBlur={() => updateField('totalPeriods', formatNumericInput(form.totalPeriods, { integerOnly: true }))}
                     className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                   />
                 </label>

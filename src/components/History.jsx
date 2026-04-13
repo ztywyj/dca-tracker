@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, Download, FileUp, Pencil, Trash2 } from 'lucide-react'
+import { formatNumericInput, normalizeNumericInput, toNumberOrFallback } from '../utils/numericInput'
 
 const filters = [
   { value: 'all', label: '全部' },
@@ -90,8 +91,8 @@ function createEditDraft(record) {
     note: record.note || '',
     assets: record.assets.map((asset) => ({
       ticker: asset.ticker,
-      price: Number(asset.price) || 0,
-      actualShares: Number(asset.actualShares) || 0,
+      price: formatNumericInput(asset.price),
+      actualShares: formatNumericInput(asset.actualShares),
     })),
   }
 }
@@ -193,6 +194,27 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
     }))
   }
 
+  useEffect(() => {
+    if (!editDraft) {
+      return
+    }
+
+    setEditDraft((current) => {
+      if (!current) {
+        return current
+      }
+
+      return {
+        ...current,
+        assets: current.assets.map((asset) => ({
+          ...asset,
+          price: normalizeNumericInput(asset.price),
+          actualShares: normalizeNumericInput(asset.actualShares),
+        })),
+      }
+    })
+  }, [editingId])
+
   const handleSaveEdit = (record) => {
     if (!editDraft) {
       return
@@ -200,8 +222,8 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
 
     const nextAssets = record.assets.map((asset) => {
       const patch = editDraft.assets.find((item) => item.ticker === asset.ticker)
-      const price = roundToTwo(patch?.price ?? asset.price)
-      const actualShares = Number(patch?.actualShares) || 0
+      const price = roundToTwo(toNumberOrFallback(patch?.price, asset.price))
+      const actualShares = roundToTwo(toNumberOrFallback(patch?.actualShares, 0))
       return {
         ...asset,
         price,
@@ -395,28 +417,30 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                               <label className="space-y-2">
                                 <span className="text-sm text-textSoft">操作价格</span>
                                 <input
-                                  type="number"
-                                  min="0"
+                                  type="text"
+                                  inputMode="decimal"
                                   step="0.01"
                                   value={draftAsset.price}
-                                  onChange={(event) => updateDraftAsset(asset.ticker, { price: Number(event.target.value) })}
+                                  onChange={(event) => updateDraftAsset(asset.ticker, { price: normalizeNumericInput(event.target.value) })}
+                                  onBlur={() => updateDraftAsset(asset.ticker, { price: formatNumericInput(draftAsset.price) })}
                                   className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 font-mono text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                                 />
                               </label>
                               <label className="space-y-2">
                                 <span className="text-sm text-textSoft">实际买入股数</span>
                                 <input
-                                  type="number"
-                                  min="0"
-                                  step="1"
+                                  type="text"
+                                  inputMode="decimal"
+                                  step="0.01"
                                   value={draftAsset.actualShares}
-                                  onChange={(event) => updateDraftAsset(asset.ticker, { actualShares: Number(event.target.value) })}
+                                  onChange={(event) => updateDraftAsset(asset.ticker, { actualShares: normalizeNumericInput(event.target.value) })}
+                                  onBlur={() => updateDraftAsset(asset.ticker, { actualShares: formatNumericInput(draftAsset.actualShares) })}
                                   className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 font-mono text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
                                 />
                               </label>
                             </div>
                             <p className="mt-3 text-sm text-textSoft">
-                              实际投入：<span className="font-mono text-white">{formatMoney(roundToTwo((Number(draftAsset.price) || 0) * (Number(draftAsset.actualShares) || 0)))}</span>
+                              实际投入：<span className="font-mono text-white">{formatMoney(roundToTwo(toNumberOrFallback(draftAsset.price, 0) * toNumberOrFallback(draftAsset.actualShares, 0)))}</span>
                             </p>
                           </div>
                         )

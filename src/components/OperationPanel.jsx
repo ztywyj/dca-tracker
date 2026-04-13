@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarDays, LoaderCircle, RefreshCcw } from 'lucide-react'
+import { formatNumericInput, normalizeNumericInput, toNumberOrFallback } from '../utils/numericInput'
 import { getPeriodicAmount, getSuggestedShares as getDcaSuggestedShares } from '../utils/dcaCalc'
 import {
   calcAllTargets,
@@ -52,23 +53,23 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
 
     setAssetStates(
       plan.assets.map((asset, index) => {
-        const bootstrapTargetValue = plan.strategy === 'VA' && currentPeriod === 0
-          ? getPeriodicAmount(plan, asset.weight)
-          : plan.strategy === 'VA'
-            ? Number(targetMatrix?.[currentPeriod]?.[index] || 0)
-            : getPeriodicAmount(plan, asset.weight)
-        const bootstrapRequiredAmount = plan.strategy === 'VA' && currentPeriod === 0
-          ? getPeriodicAmount(plan, asset.weight)
-          : plan.strategy === 'VA'
-            ? getRequiredInvestment(0, bootstrapTargetValue)
-            : getPeriodicAmount(plan, asset.weight)
+        const bootstrapTargetValue = plan.strategy === 'VA'
+          ? currentPeriod === 0
+            ? getInitialTargetValue(asset.weight, plan)
+            : Number(targetMatrix?.[currentPeriod]?.[index] || 0)
+          : getPeriodicAmount(plan, asset.weight)
+        const bootstrapRequiredAmount = plan.strategy === 'VA'
+          ? currentPeriod === 0
+            ? bootstrapTargetValue
+            : getRequiredInvestment(0, bootstrapTargetValue)
+          : getPeriodicAmount(plan, asset.weight)
 
         return {
           ticker: asset.ticker,
-          price: 0,
+          price: '',
           priceSource: 'manual',
           loading: false,
-          actualShares: 0,
+          actualShares: '',
           defaultSuggestedShares: 0,
           bootstrapRequiredAmount,
           fetchError: '',
@@ -93,14 +94,14 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
   const currentAssets = plan.assets.map((asset, index) => {
     const state = assetStates.find((item) => item.ticker === asset.ticker) || {
       ticker: asset.ticker,
-      price: 0,
+      price: '',
       priceSource: 'manual',
       loading: false,
-      actualShares: 0,
+      actualShares: '',
       fetchError: '',
     }
 
-    const price = Number(state.price) || 0
+    const price = toNumberOrFallback(state.price, 0)
     const currentValueBefore = roundToTwo((Number(asset.currentShares) || 0) * price)
     const targetValue = plan.strategy === 'VA'
       ? currentPeriod === 0
@@ -109,13 +110,14 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
       : getPeriodicAmount(plan, asset.weight)
     const requiredAmount = plan.strategy === 'VA'
       ? currentPeriod === 0
-        ? roundToTwo(getPeriodicAmount(plan, asset.weight))
+        ? roundToTwo(targetValue)
         : getRequiredInvestment(currentValueBefore, targetValue)
       : getPeriodicAmount(plan, asset.weight)
     const suggestedShares = plan.strategy === 'VA'
       ? getVaSuggestedShares(requiredAmount, price)
       : getDcaSuggestedShares(requiredAmount, price)
-    const actualShares = Number(state.actualShares) || 0
+    const hasManualActualShares = state.actualShares !== ''
+    const actualShares = hasManualActualShares ? roundToTwo(toNumberOrFallback(state.actualShares, 0)) : roundToTwo(suggestedShares)
     const actualAmount = roundToTwo(actualShares * price)
 
     return {
@@ -125,8 +127,12 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
       targetValue: roundToTwo(targetValue),
       requiredAmount: roundToTwo(requiredAmount),
       suggestedShares,
-      actualShares: Number(state.actualShares) > 0 ? actualShares : suggestedShares,
-      actualAmount: roundToTwo((Number(state.actualShares) > 0 ? actualShares : suggestedShares) * price),
+      suggestedSharesDisplay: formatNumericInput(suggestedShares),
+      actualSharesInput: state.actualShares,
+      actualSharesDisplay: hasManualActualShares ? state.actualShares : formatNumericInput(suggestedShares),
+      hasManualActualShares,
+      actualShares,
+      actualAmount,
     }
   })
 
@@ -150,7 +156,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
     if (typeof result.price === 'number') {
       updateAssetState(ticker, {
         loading: false,
-        price: result.price,
+        price: typeof result.price === 'number' ? formatNumericInput(result.price) : '',
         priceSource: 'auto',
         fetchError: '',
       })
@@ -172,7 +178,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
       date: new Date(operationDate).toISOString(),
       assets: currentAssets.map((asset) => ({
         ticker: asset.ticker,
-        price: Number(asset.price) || 0,
+        price: toNumberOrFallback(asset.price, 0),
         priceSource: asset.priceSource === 'auto' ? 'auto' : 'manual',
         targetValue: asset.targetValue,
         currentValueBefore: asset.currentValueBefore,
@@ -245,108 +251,146 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
         )}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         {currentAssets.map((asset, index) => {
           const isOddLastCard = currentAssets.length % 2 === 1 && index === currentAssets.length - 1
+          const priceSourceLabel = asset.priceSource === 'auto' ? '自动·API' : '手动·输入'
+          const priceSourcePillClass = asset.priceSource === 'auto'
+            ? 'operation-status-pill operation-status-pill-auto'
+            : 'operation-status-pill operation-status-pill-manual'
+          const priceFeedback = asset.fetchError
+            ? asset.fetchError
+            : asset.priceSource === 'auto'
+              ? '价格已通过接口同步，可直接确认本期执行。'
+              : '当前处于手动输入模式，请确认价格后再执行。'
 
           return (
-          <article
-            key={asset.ticker}
-            className={`card p-5 ${isOddLastCard ? 'xl:col-span-2 xl:mx-auto xl:w-full xl:max-w-[32rem]' : ''}`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h3 className="font-mono text-lg text-white">{asset.ticker}</h3>
-                  <span className="rounded-full border border-line/80 bg-elevated/75 px-3 py-1 text-xs text-textSoft">
-                    {Math.round((Number(asset.weight) || 0) * 100)}%
-                  </span>
+            <article
+              key={asset.ticker}
+              className={`operation-asset-card w-full p-4 sm:p-5 ${isOddLastCard ? 'xl:col-span-2 xl:max-w-[calc((100%-1rem)/2)] xl:justify-self-center' : ''}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h3 className="font-mono text-[1.65rem] font-semibold tracking-[0.02em] text-white">{asset.ticker}</h3>
+                    <span className="operation-weight-chip">
+                      {Math.round((Number(asset.weight) || 0) * 100)}%
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-[#a9bbd5]">{asset.name}</p>
                 </div>
-                <p className="mt-1 text-sm text-muted">{asset.name}</p>
               </div>
-            </div>
 
-            <div className="mt-5 grid gap-5">
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
-                <div className="min-w-0">
-                  <p className="text-sm text-textSoft">价格输入区</p>
-                  <p className="mt-1 text-xs text-muted">先确认价格来源，再录入本期执行。</p>
-                </div>
-                <button
+              <div className="mt-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="max-w-xl">
+                    <p className="operation-kicker">价格输入区</p>
+                    <p className="operation-helper mt-2">先确认价格来源，再录入本期执行。</p>
+                  </div>
+                  <button
                     type="button"
                     onClick={() => handleAutoFetch(asset.ticker)}
                     disabled={asset.loading}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-line/80 bg-elevated/70 px-3 py-2 text-xs text-textSoft transition hover:border-accent/20 hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-60"
+                    className="operation-action-button w-fit shrink-0"
                   >
                     {asset.loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCcw size={14} />}
                     {asset.loading ? '获取中...' : '自动获取'}
                   </button>
                 </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                  <label className="space-y-2">
-                    <span className="text-sm text-textSoft">当前价格</span>
+
+                <div className="operation-divider mt-5" />
+
+                <div className="mt-6">
+                  <p className="operation-kicker">当前价格</p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <input
-                      type="number"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       step="0.01"
                       value={asset.price}
-                      onChange={(event) => updateAssetState(asset.ticker, { price: Number(event.target.value), priceSource: 'manual', fetchError: '' })}
-                      className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 font-mono text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
+                      placeholder="0"
+                      onChange={(event) => updateAssetState(asset.ticker, { price: normalizeNumericInput(event.target.value), priceSource: 'manual', fetchError: '' })}
+                      onBlur={() => {
+                        if (asset.price === '') {
+                          return
+                        }
+
+                        updateAssetState(asset.ticker, {
+                          price: formatNumericInput(asset.price),
+                        })
+                      }}
+                      className="operation-field operation-price-field"
                     />
-                  </label>
-                  <span
-                    aria-label={asset.priceSource === 'auto' ? '价格来源：自动获取' : '价格来源：手动输入'}
-                    className={`rounded-full px-3 py-2 text-xs ${asset.priceSource === 'auto' ? 'border border-info/30 bg-info/10 text-sky-200' : 'border border-line bg-elevated text-textSoft'}`}
-                  >
-                    {asset.priceSource === 'auto' ? '自动 · API' : '手动 · 输入'}
-                  </span>
-                </div>
-                {asset.fetchError ? <p className="mt-3 text-xs text-amber-200">{asset.fetchError}</p> : null}
-              
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-line/80 bg-surface p-4">
-                  <p className="label">当前持仓价值</p>
-                  <p className="mt-3 font-mono text-xl text-white">{formatMoney(asset.currentValueBefore)}</p>
-                </div>
-                <div className="rounded-2xl border border-line/80 bg-surface p-4">
-                  <p className="label">{plan.strategy === 'VA' ? 'VA目标值' : '本期固定投入'}</p>
-                  <p className="mt-3 font-mono text-xl text-white">{formatMoney(asset.targetValue)}</p>
-                  {isOpenEnded && Number(plan.periodicTarget) === 0 ? (
-                    <p className="mt-2 text-xs text-muted">当前为灵活决定模式，这里的建议值仅作为参考。</p>
-                  ) : null}
-                </div>
-                <div className="rounded-2xl border border-line/80 bg-surface p-4">
-                  <p className="label">建议买入金额</p>
-                  <p className="mt-3 font-mono text-xl text-slate-100">{formatMoney(asset.requiredAmount)}</p>
-                  {isOpenEnded && Number(plan.periodicTarget) === 0 ? (
-                    <p className="mt-2 text-xs text-muted">你可以按当期现金流和判断灵活调整实际投入。</p>
-                  ) : null}
-                </div>
-                <div className="rounded-2xl border border-line/80 bg-surface p-4">
-                  <p className="label">建议买入股数</p>
-                  <p className="mt-3 font-mono text-xl text-white">{asset.suggestedShares}</p>
+                    <span
+                      aria-label={asset.priceSource === 'auto' ? '价格来源：自动获取' : '价格来源：手动输入'}
+                      className={priceSourcePillClass}
+                    >
+                      {priceSourceLabel}
+                    </span>
+                  </div>
+                  <p className={`mt-3 text-xs ${asset.fetchError ? 'text-amber-200' : 'text-[#94a7c3]'}`}>{priceFeedback}</p>
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="space-y-2">
-                  <span className="text-sm text-textSoft">实际买入股数</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={asset.actualShares}
-                    onChange={(event) => updateAssetState(asset.ticker, { actualShares: Number(event.target.value) })}
-                    className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 font-mono text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
-                  />
-                </label>
-                <div className="rounded-2xl border border-line/80 bg-elevated/70 p-4">
-                  <p className="label text-textSoft">实际投入金额</p>
-                  <p className="mt-3 font-mono text-2xl text-white">{formatMoney(asset.actualAmount)}</p>
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="operation-metric-card p-4">
+                  <p className="operation-metric-label">当前持仓价值</p>
+                  <p className="operation-metric-value">{formatMoney(asset.currentValueBefore)}</p>
+                </div>
+
+                <div className="operation-metric-card p-4">
+                  <p className="operation-metric-label">{plan.strategy === 'VA' ? 'VA目标值' : '本期固定投入'}</p>
+                  <p className="operation-metric-value">{formatMoney(asset.targetValue)}</p>
+                </div>
+
+                <div className="operation-metric-card p-4">
+                  <p className="operation-metric-label">建议买入金额</p>
+                  <p className="operation-metric-value">{formatMoney(asset.requiredAmount)}</p>
+                  {isOpenEnded && Number(plan.periodicTarget) === 0 ? (
+                    <p className="mt-3 text-xs text-[#91a5c0]">灵活决定模式下，这里的建议值仅作为参考。</p>
+                  ) : null}
+                </div>
+
+                <div className="operation-metric-card p-4">
+                  <p className="operation-metric-label">建议买入股数</p>
+                  <p className="operation-metric-value">{asset.suggestedSharesDisplay}</p>
                 </div>
               </div>
-            </div>
-          </article>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.95fr)] sm:items-end">
+                <label className="space-y-3">
+                  <span className="operation-kicker">实际买入股数</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    step="0.01"
+                    value={asset.actualSharesDisplay}
+                    placeholder="0"
+                    onChange={(event) => updateAssetState(asset.ticker, { actualShares: normalizeNumericInput(event.target.value) })}
+                    onFocus={(event) => {
+                      if (!asset.hasManualActualShares) {
+                        event.target.select()
+                      }
+                    }}
+                    onBlur={() => {
+                      if (asset.actualSharesInput === '') {
+                        return
+                      }
+
+                      updateAssetState(asset.ticker, {
+                        actualShares: formatNumericInput(asset.actualSharesInput),
+                      })
+                    }}
+                    className="operation-field operation-share-field"
+                  />
+                </label>
+
+                <div className="operation-accent-card p-5">
+                  <p className="operation-metric-label text-[#dbe7fb]">实际投入金额</p>
+                  <p className="operation-metric-value">{formatMoney(asset.actualAmount)}</p>
+                </div>
+              </div>
+            </article>
           )
         })}
       </div>

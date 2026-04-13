@@ -81,4 +81,169 @@ select {
   .terminal-chip {
     @apply rounded-full border border-line/80 bg-elevated/80 px-3 py-1 text-xs text-textSoft;
   }
+
+  .operation-asset-card {
+    border: 1px solid rgba(50, 65, 91, 0.95);
+    border-radius: 1.5rem;
+    background: linear-gradient(180deg, rgba(19, 26, 37, 0.97) 0%, rgba(16, 22, 33, 0.99) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.02),
+      0 14px 32px rgba(2, 6, 18, 0.3);
+  }
+
+  .operation-weight-chip {
+    border: 1px solid #31405d;
+    border-radius: 999px;
+    background: #1c2536;
+    color: #dbe8fd;
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    padding: 0.34rem 0.72rem;
+  }
+
+  .operation-kicker {
+    color: #f0f5ff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .operation-helper {
+    color: #9fb2ce;
+    font-size: 0.84rem;
+    line-height: 1.6;
+  }
+
+  .operation-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .operation-action-button {
+    align-items: center;
+    background: #1c2536;
+    border: 1px solid #31405d;
+    border-radius: 999px;
+    color: #ebf3ff;
+    display: inline-flex;
+    font-size: 0.82rem;
+    font-weight: 600;
+    gap: 0.5rem;
+    justify-content: center;
+    padding: 0.72rem 0.92rem;
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      transform 180ms ease;
+  }
+
+  .operation-action-button:hover {
+    background: #202b3f;
+    border-color: rgba(96, 165, 250, 0.34);
+    transform: translateY(-1px);
+  }
+
+  .operation-action-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+  }
+
+  .operation-field {
+    width: 100%;
+    background: #0c1119;
+    border: 1px solid #24324b;
+    border-radius: 1.15rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    color: #ffffff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+    padding: 0.9rem 0.95rem;
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .operation-field::placeholder {
+    color: #70829d;
+  }
+
+  .operation-field:focus {
+    background: #0f1723;
+    border-color: rgba(96, 165, 250, 0.45);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.02),
+      0 0 0 1px rgba(96, 165, 250, 0.12);
+  }
+
+  .operation-price-field {
+    font-size: clamp(1.45rem, 1.8vw, 1.75rem);
+    line-height: 1;
+    min-height: 4.35rem;
+  }
+
+  .operation-share-field {
+    font-size: 1.45rem;
+    line-height: 1;
+    min-height: 3.55rem;
+  }
+
+  .operation-status-pill {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.74rem;
+    font-weight: 600;
+    justify-content: center;
+    letter-spacing: 0.04em;
+    min-height: 2.7rem;
+    padding: 0.68rem 0.92rem;
+    white-space: nowrap;
+  }
+
+  .operation-status-pill-auto {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.32);
+    color: #d8f4ff;
+  }
+
+  .operation-status-pill-manual {
+    background: #1a2333;
+    border: 1px solid #31405d;
+    color: #dce8fb;
+  }
+
+  .operation-metric-card {
+    background: #0d121b;
+    border: 1px solid #28354a;
+    border-radius: 1.2rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+
+  .operation-accent-card {
+    background: #1a2333;
+    border: 1px solid #31405d;
+    border-radius: 1.2rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .operation-metric-label {
+    color: #b9ceec;
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+
+  .operation-metric-value {
+    color: #ffffff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: clamp(1.35rem, 1.65vw, 1.7rem);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.08;
+    margin-top: 0.85rem;
+  }
 }

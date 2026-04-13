@@ -218,7 +218,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
           value: `${getProfitA11yLabel(floatingProfit)} ${formatSignedMoney(floatingProfit)} · ${formatPercent(floatingProfitPct)}`,
           icon: Activity,
           tone: floatingProfit >= 0 ? 'text-positive' : 'text-negative',
-          guide: '当前市值 - 累计投入，文案会同时说明是盈利还是亏损，避免只靠颜色判断',
+          guide: '当前总市值减去累计投入，正数表示赚钱，负数表示浮亏。',
         },
         {
           label: '已坚持',
@@ -248,7 +248,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
           value: `${getProfitA11yLabel(floatingProfit)} ${formatSignedMoney(floatingProfit)} · ${formatPercent(floatingProfitPct)}`,
           icon: Activity,
           tone: floatingProfit >= 0 ? 'text-positive' : 'text-negative',
-          guide: '当前市值 - 累计投入，文案会同时说明是盈利还是亏损，避免只靠颜色判断',
+          guide: '当前总市值减去累计投入，正数表示赚钱，负数表示浮亏。',
         },
         {
           label: '剩余子弹',

@@ -1,0 +1,72 @@
+export function normalizeNumericInput(value, options = {}) {
+  const { decimalPlaces = 2, integerOnly = false } = options
+
+  if (value === '' || value === null || value === undefined) {
+    return ''
+  }
+
+  const text = String(value)
+    .replaceAll(',', '')
+    .replace(/[^\d.]/g, '')
+
+  if (!text) {
+    return ''
+  }
+
+  const hasDecimalPoint = text.includes('.')
+  const [rawIntegerPart = '', ...fractionParts] = text.split('.')
+  let integerPart = rawIntegerPart
+  let fractionPart = fractionParts.join('')
+
+  if (text.startsWith('.')) {
+    integerPart = '0'
+  }
+
+  integerPart = integerPart === '' ? '0' : integerPart.replace(/^0+(?=\d)/, '')
+
+  if (integerOnly || decimalPlaces <= 0 || !hasDecimalPoint) {
+    return integerPart
+  }
+
+  fractionPart = fractionPart.slice(0, decimalPlaces)
+
+  if (text.endsWith('.') && fractionPart === '') {
+    return `${integerPart}.`
+  }
+
+  return fractionPart === '' ? integerPart : `${integerPart}.${fractionPart}`
+}
+
+export function formatNumericInput(value, options = {}) {
+  const { decimalPlaces = 2, integerOnly = false } = options
+  const normalized = normalizeNumericInput(value, { decimalPlaces, integerOnly })
+
+  if (normalized === '') {
+    return ''
+  }
+
+  if (normalized.endsWith('.')) {
+    return normalized.slice(0, -1)
+  }
+
+  const numeric = Number(normalized)
+
+  if (!Number.isFinite(numeric)) {
+    return ''
+  }
+
+  if (integerOnly) {
+    return String(Math.trunc(numeric))
+  }
+
+  return numeric.toFixed(decimalPlaces).replace(/\.?0+$/, '')
+}
+
+export function toNumberOrFallback(value, fallback = 0) {
+  if (value === '' || value === null || value === undefined) {
+    return fallback
+  }
+
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : fallback
+}

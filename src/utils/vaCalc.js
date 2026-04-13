@@ -1,5 +1,4 @@
 const DEFAULT_RESERVE_RATIO = 0.2
-const DEFAULT_FIRST_PERIOD_RATIO = 0.5
 const OPEN_ENDED_PLACEHOLDER_PERIODS = 9999
 
 function roundToTwo(value) {
@@ -7,7 +6,7 @@ function roundToTwo(value) {
 }
 
 function getPeriodsPerYear(frequency = 'monthly') {
-  return frequency === 'biweekly' ? 26 : 12
+  return frequency === 'biweekly' ? 24 : 12
 }
 
 function isOpenEndedPlan(plan = {}) {
@@ -28,12 +27,6 @@ function getAssetCount(plan = {}) {
   return Array.isArray(plan.assets) ? plan.assets.length : 0
 }
 
-function getFirstPeriodRatio(plan = {}) {
-  const assetCount = getAssetCount(plan)
-  if (!assetCount) return 0
-  return DEFAULT_FIRST_PERIOD_RATIO
-}
-
 function getAssetPeriodicContribution(assetWeight, plan = {}) {
   if (isOpenEndedPlan(plan)) {
     return roundToTwo((Number(plan.periodicTarget) || 0) * (Number(assetWeight) || 0))
@@ -41,15 +34,11 @@ function getAssetPeriodicContribution(assetWeight, plan = {}) {
 
   const deployableBudget = getDeployableBudget(plan)
   const totalPeriods = Math.max(1, Number(plan.totalPeriods) || 1)
-  const firstPeriodRatio = getFirstPeriodRatio(plan)
-  const remainingBudget = deployableBudget * assetWeight * Math.max(0, 1 - firstPeriodRatio)
-  const remainingPeriods = Math.max(1, totalPeriods - 1)
-  return remainingBudget / remainingPeriods
+  return roundToTwo((deployableBudget * (Number(assetWeight) || 0)) / totalPeriods)
 }
 
 function getInitialTargetValue(assetWeight, plan = {}) {
-  const deployableBudget = getDeployableBudget(plan)
-  return roundToTwo(deployableBudget * (Number(assetWeight) || 0) * getFirstPeriodRatio(plan))
+  return getAssetPeriodicContribution(assetWeight, plan)
 }
 
 export function getTargetValue(periodIndex, assetWeight, plan = {}) {
@@ -72,12 +61,10 @@ export function getTargetValue(periodIndex, assetWeight, plan = {}) {
     return roundToTwo(target)
   }
 
-  const deployableBudget = getDeployableBudget(plan)
-  const firstPeriodRatio = getFirstPeriodRatio(plan)
-  const firstTarget = deployableBudget * normalizedAssetWeight * firstPeriodRatio
+  const firstTarget = getInitialTargetValue(normalizedAssetWeight, plan)
 
   if (normalizedPeriodIndex === 0) {
-    return roundToTwo(firstTarget)
+    return firstTarget
   }
 
   const periodicContribution = getAssetPeriodicContribution(normalizedAssetWeight, plan)
