@@ -12,12 +12,12 @@ const budgetModeOptions = [
   {
     value: 'fixed',
     label: '固定预算',
-    description: '我有一笔闲钱，计划分X期投完（现有逻辑）',
+    description: '我有一笔闲钱，计划分 X 期投完。',
   },
   {
     value: 'open-ended',
     label: '无限定投',
-    description: '我用每期收入的固定部分持续投入，没有终点',
+    description: '我用每期收入的一部分持续投入，没有固定终点。',
   },
 ]
 
@@ -34,9 +34,9 @@ function createDraftPlan() {
     name: '',
     strategy: 'VA',
     budgetMode: 'fixed',
-    totalBudget: 10000,
+    totalBudget: 50000,
     reserveRatio: 0.2,
-    totalPeriods: 24,
+    totalPeriods: 12,
     periodicTarget: 1000,
     currentPeriod: 0,
     frequency: 'monthly',
@@ -47,7 +47,11 @@ function createDraftPlan() {
 }
 
 function normalizeFormPlan(source) {
-  const base = source ? { ...source, assets: [...(source.assets || [])] } : createDraftPlan()
+  const normalizedAssets = [...(source?.assets || [])].map((asset) => ({
+    ...asset,
+    currentShares: formatNumericInput(asset.currentShares),
+  }))
+  const base = source ? { ...source, assets: normalizedAssets } : createDraftPlan()
   const budgetMode = base.budgetMode === 'open-ended' ? 'open-ended' : 'fixed'
   const hasPeriodicTarget = base.periodicTarget !== '' && base.periodicTarget !== null && base.periodicTarget !== undefined
   const hasTotalBudget = base.totalBudget !== '' && base.totalBudget !== null && base.totalBudget !== undefined
@@ -72,7 +76,7 @@ function createAssetDraft() {
     ticker: '',
     name: '',
     weight: 1,
-    currentShares: 0,
+    currentShares: '',
   }
 }
 
@@ -113,7 +117,13 @@ function rebalanceWeights(assets = []) {
   return rounded
 }
 
-export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData, plans = [] }) {
+function getOptionCardClass(active) {
+  return active
+    ? 'subtle-panel border-accent/20 bg-accent/10 text-slate-50'
+    : 'subtle-panel text-textSoft'
+}
+
+export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData }) {
   const [form, setForm] = useState(() => normalizeFormPlan(plan))
   const [showAssetForm, setShowAssetForm] = useState(false)
   const [assetDraft, setAssetDraft] = useState(createAssetDraft())
@@ -215,6 +225,20 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
     }))
   }
 
+  const updateAssetCurrentShares = (ticker, currentShares) => {
+    setForm((current) => ({
+      ...current,
+      assets: current.assets.map((asset) =>
+        asset.ticker === ticker
+          ? {
+              ...asset,
+              currentShares,
+            }
+          : asset,
+      ),
+    }))
+  }
+
   const handleEstimateYield = () => {
     const estimation = estimateTargetYield(form.assets)
     updateField('targetAnnualReturn', estimation.estimatedYield)
@@ -259,7 +283,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
   const handleCreateNew = () => {
     setForm({
       ...createDraftPlan(),
-      totalBudget: '10000',
+      totalBudget: '50000',
       totalPeriods: '12',
       periodicTarget: '1000',
     })
@@ -277,7 +301,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
     onClearAllData?.()
     setForm({
       ...createDraftPlan(),
-      totalBudget: '10000',
+      totalBudget: '50000',
       totalPeriods: '12',
       periodicTarget: '1000',
     })
@@ -288,29 +312,30 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
   }
 
   return (
-    <section className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
-      <div className="card p-5">
+    <section className="grid gap-5 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
+      <div className="section-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="label">计划配置</p>
-            <h2 className="heading-section mt-2">计划设置</h2>
-            <p className="body-copy mt-2">
-              {plan ? `当前计划：${plan.name} · 共 ${plans.length || 1} 份计划` : '首次进入请先创建计划，保存后将进入总览页。'}
+            <p className="label">Plan Configuration</p>
+            <h2 className="section-title">计划设置</h2>
+            <p className="muted-copy mt-3 max-w-2xl">
+              配置节奏、预算和资产权重。左侧负责编辑，右侧像 Stripe 的 review 面板一样持续检查是否能安全保存。
             </p>
           </div>
+
           {plan ? (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setForm(normalizeFormPlan(plan))}
-                className="rounded-2xl border border-line/80 bg-elevated/70 px-4 py-2 text-sm text-white transition hover:border-line hover:bg-panel"
+                className="control-button"
               >
                 修改计划
               </button>
               <button
                 type="button"
                 onClick={handleCreateNew}
-                className="rounded-2xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm text-slate-100 transition hover:border-accent/28 hover:bg-accent/14"
+                className="control-button"
               >
                 新建计划
               </button>
@@ -318,28 +343,26 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
           ) : null}
         </div>
 
-        <div className="mt-6 grid gap-5">
-          <label className="space-y-2">
-            <span className="text-sm text-textSoft">计划名称</span>
-            <input
-              type="text"
-              value={form.name}
-              placeholder="例如：2026美股VA定投"
-              onChange={(event) => updateField('name', event.target.value)}
-              className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
-            />
-          </label>
+        <div className="mt-5 grid gap-5">
+          <div className="subtle-panel p-4">
+            <p className="mini-kicker">计划名称</p>
+            <label className="mt-4 block space-y-2">
+              <span className="text-sm text-muted-foreground">名称</span>
+              <input
+                type="text"
+                value={form.name}
+                placeholder="例如：2026 美股 VA 定投"
+                onChange={(event) => updateField('name', event.target.value)}
+                className="surface-input"
+              />
+            </label>
+          </div>
 
-          <div className="space-y-3">
-            <span className="text-sm text-textSoft">预算模式</span>
-            <div className="grid gap-3 sm:grid-cols-2">
+          <div className="subtle-panel p-4">
+            <p className="mini-kicker">预算模式</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
               {budgetModeOptions.map((option) => (
-                <label
-                  key={option.value}
-                  className={`rounded-2xl border px-4 py-3 transition ${
-                    form.budgetMode === option.value ? 'border-accent/20 bg-accent/10 text-slate-100' : 'border-line/80 bg-elevated/70 text-textSoft'
-                  }`}
-                >
+                <label key={option.value} className={`p-4 ${getOptionCardClass(form.budgetMode === option.value)}`}>
                   <input
                     type="radio"
                     name="budgetMode"
@@ -348,23 +371,18 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                     onChange={() => updateField('budgetMode', option.value)}
                     className="sr-only"
                   />
-                  <div className="font-medium">{option.label}</div>
-                  <p className="mt-2 text-xs text-muted">{option.description}</p>
+                  <div className="text-sm font-medium text-white">{option.label}</div>
+                  <p className="mt-2 text-xs leading-6 text-muted-foreground">{option.description}</p>
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="space-y-3">
-            <span className="text-sm text-textSoft">策略类型</span>
-            <div className="grid gap-3 sm:grid-cols-2">
+          <div className="subtle-panel p-4">
+            <p className="mini-kicker">策略类型</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
               {strategyOptions.map((option) => (
-                <label
-                  key={option.value}
-                  className={`rounded-2xl border px-4 py-3 transition ${
-                    form.strategy === option.value ? 'border-accent/20 bg-accent/10 text-slate-100' : 'border-line/80 bg-elevated/70 text-textSoft'
-                  }`}
-                >
+                <label key={option.value} className={`p-4 ${getOptionCardClass(form.strategy === option.value)}`}>
                   <input
                     type="radio"
                     name="strategy"
@@ -373,68 +391,72 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                     onChange={() => updateField('strategy', option.value)}
                     className="sr-only"
                   />
-                  <div className="font-medium">{option.label}</div>
-                  {form.strategy === option.value ? (
-                    <p className="mt-2 text-xs text-muted">
-                      {option.value === 'VA'
-                        ? '根据市值与目标的差距决定每期投多少——涨了少买，跌了多买，自动抄底。'
-                        : '每期固定投入相同金额，不管涨跌，纪律执行，适合懒人长期持有。'}
-                    </p>
-                  ) : null}
+                  <div className="text-sm font-medium text-white">{option.label}</div>
+                  <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                    {option.value === 'VA'
+                      ? '根据市值与目标的差距决定每期投入多少，更适合严格控制执行路径。'
+                      : '每期固定投入同样金额，执行简单，适合更长期的机械化定投。'}
+                  </p>
                 </label>
               ))}
             </div>
           </div>
 
           {isOpenEnded ? (
-            <div className="space-y-3 rounded-2xl border border-line/80 bg-elevated/70 p-4">
-              <label className="space-y-2 block">
-                <span className="text-sm text-textSoft">每期计划投入金额（美元）</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={form.periodicTarget}
-                  onChange={(event) => updateField('periodicTarget', event.target.value)}
-                  onBlur={() => updateField('periodicTarget', formatNumericInput(form.periodicTarget))}
-                  className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
-                />
-              </label>
-              <p className="text-sm text-textSoft">
-                实际每期可多可少，这里填你的目标金额，仅用于生成建议，不做硬性限制。
-              </p>
+            <div className="subtle-panel p-4">
+              <p className="mini-kicker">长期执行预算</p>
+              <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-end">
+                <label className="space-y-2">
+                  <span className="text-sm text-muted-foreground">每期计划投入金额（美元）</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.periodicTarget}
+                    onChange={(event) => updateField('periodicTarget', event.target.value)}
+                    onBlur={() => updateField('periodicTarget', formatNumericInput(form.periodicTarget))}
+                    className="surface-input financial-input"
+                  />
+                </label>
+                <div className="surface-stat">
+                  <p className="mini-kicker">当前目标</p>
+                  <p className="mt-3 data-value text-xl">{formatMoney(form.periodicTarget)}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">仅用于建议，不做硬性限制</p>
+                </div>
+              </div>
             </div>
           ) : (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2">
+            <div className="subtle-panel p-4">
+              <p className="mini-kicker">预算与周期</p>
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 <label className="space-y-2">
-                  <span className="text-sm text-textSoft">总预算（美元）</span>
+                  <span className="text-sm text-muted-foreground">总预算（美元）</span>
                   <input
                     type="text"
                     inputMode="decimal"
                     value={form.totalBudget}
                     onChange={(event) => updateField('totalBudget', event.target.value)}
                     onBlur={() => updateField('totalBudget', formatNumericInput(form.totalBudget))}
-                    className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
+                    className="surface-input financial-input"
                   />
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm text-textSoft">总期数</span>
+                  <span className="text-sm text-muted-foreground">总期数</span>
                   <input
                     type="text"
                     inputMode="numeric"
                     value={form.totalPeriods}
                     onChange={(event) => updateField('totalPeriods', event.target.value)}
                     onBlur={() => updateField('totalPeriods', formatNumericInput(form.totalPeriods, { integerOnly: true }))}
-                    className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
+                    className="surface-input financial-input"
                   />
                 </label>
               </div>
 
-              <div className="space-y-3 rounded-2xl border border-line/80 bg-elevated/70 p-4">
+              <div className="mt-4 subtle-panel p-4">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm text-textSoft">保留现金比例</span>
-                  <span className="font-mono text-white">{Math.round((Number(form.reserveRatio) || 0) * 100)}%</span>
+                  <span className="text-sm text-muted-foreground">保留现金比例</span>
+                  <span className="data-value">{Math.round((Number(form.reserveRatio) || 0) * 100)}%</span>
                 </div>
                 <input
                   type="range"
@@ -443,48 +465,63 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                   step="0.01"
                   value={form.reserveRatio}
                   onChange={(event) => updateField('reserveRatio', Number(event.target.value))}
-                  className="w-full accent-blue-400"
+                  className="mt-4 w-full accent-blue-400"
                 />
-                <p className="text-sm text-textSoft">
-                  保留 {formatMoney(reservedCash)}，可投 {formatMoney(deployableCash)}
-                </p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="surface-stat">
+                    <p className="mini-kicker">保留现金</p>
+                    <p className="mt-3 data-value text-lg">{formatMoney(reservedCash)}</p>
+                  </div>
+                  <div className="surface-stat">
+                    <p className="mini-kicker">可投资金</p>
+                    <p className="mt-3 data-value text-lg">{formatMoney(deployableCash)}</p>
+                  </div>
+                </div>
               </div>
-            </>
+            </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="space-y-2">
-              <span className="text-sm text-textSoft">定投频率</span>
-              <select
-                value={form.frequency}
-                onChange={(event) => updateField('frequency', event.target.value)}
-                className="w-full rounded-2xl border border-line/80 bg-surface px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
-              >
-                {frequencyOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+            <div className="subtle-panel p-4">
+              <p className="mini-kicker">执行节奏</p>
+              <label className="mt-4 block space-y-2">
+                <span className="text-sm text-muted-foreground">定投频率</span>
+                <select
+                  value={form.frequency}
+                  onChange={(event) => updateField('frequency', event.target.value)}
+                  className="surface-select"
+                >
+                  {frequencyOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
             {form.strategy === 'VA' ? (
-              <div className="space-y-3 rounded-2xl border border-line/80 bg-elevated/70 p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm text-textSoft">目标年化收益率</span>
+              <div className="subtle-panel p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="mini-kicker">目标年化收益率</p>
+                    <p className="mt-2 text-sm text-muted-foreground">你可以手动拖动，也可以基于组合历史收益自动测算。</p>
+                  </div>
                   <button
                     type="button"
                     onClick={handleEstimateYield}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-3 py-2 text-xs text-slate-100 transition hover:border-accent/28 hover:bg-accent/14"
+                    className="control-button"
                   >
                     <Sparkles size={14} />
                     自动测算
                   </button>
                 </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm text-textSoft">当前建议值</span>
-                  <span className="font-mono text-white">{formatPercent(form.targetAnnualReturn)}</span>
+
+                <div className="mt-4 subtle-row">
+                  <span>当前建议值</span>
+                  <span className="data-value">{formatPercent(form.targetAnnualReturn)}</span>
                 </div>
+
                 <input
                   type="range"
                   min="0.05"
@@ -492,36 +529,40 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                   step="0.01"
                   value={form.targetAnnualReturn}
                   onChange={(event) => updateField('targetAnnualReturn', Number(event.target.value))}
-                  className="w-full accent-blue-400"
+                  className="mt-4 w-full accent-blue-400"
                 />
+
                 {estimatedRange ? (
-                  <div className="space-y-2 text-xs text-muted">
+                  <div className="mt-4 subtle-panel p-4 text-xs leading-6 text-muted-foreground">
                     <p>
-                      根据组合历史表现估算，建议范围 {formatPercent(estimatedRange.minYield)}~{formatPercent(estimatedRange.maxYield)}（上下浮动5%），可手动调整
+                      建议范围 <span className="data-subtle">{formatPercent(estimatedRange.minYield)}</span> ~ <span className="data-subtle">{formatPercent(estimatedRange.maxYield)}</span>，可根据风险偏好微调。
                     </p>
-                    <p>
-                      数据基于各标的10年历史CAGR（含股息再投资），TSLA/IBIT等高波动标的历史收益不代表未来表现，仅供参考。
+                    <p className="mt-2">
+                      数据基于各标的历史表现估算，不代表未来收益，TSLA / IBIT 等高波动标的仅作参考。
                     </p>
                   </div>
                 ) : null}
               </div>
             ) : (
-              <div className="rounded-2xl border border-line/80 bg-elevated/70 p-4 text-sm text-textSoft">
-                DCA 策略不需要设置目标年化收益率。
+              <div className="subtle-panel p-4">
+                <p className="mini-kicker">目标年化收益率</p>
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                  DCA 策略不需要设置目标年化收益率，重点是固定节奏与长期执行。
+                </p>
               </div>
             )}
           </div>
 
-          <div className="space-y-4 rounded-2xl border border-line/80 bg-elevated/70 p-4">
-            <div className="flex items-center justify-between gap-3">
+          <div className="subtle-panel p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-white">资产配置</p>
-                <p className="mt-1 text-xs text-muted">所有权重之和必须等于 100%</p>
+                <p className="mini-kicker">资产配置</p>
+                <p className="mt-2 text-sm text-muted-foreground">所有权重之和必须等于 100%，数字和 ticker 持续使用等宽排版。</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAssetForm((current) => !current)}
-                className="inline-flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm text-slate-100 transition hover:border-accent/28 hover:bg-accent/14"
+                className="control-button"
               >
                 <Plus size={16} />
                 添加标的
@@ -529,29 +570,46 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
             </div>
 
             {showAssetForm ? (
-              <div className="grid gap-3 rounded-2xl border border-line/80 bg-surface p-4 sm:grid-cols-2">
-                <label className="space-y-2">
-                  <span className="text-sm text-textSoft">Ticker</span>
-                  <input
-                    type="text"
-                    value={assetDraft.ticker}
-                    onChange={(event) => setAssetDraft((current) => ({ ...current, ticker: event.target.value }))}
-                    className="w-full rounded-2xl border border-line/80 bg-panel px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
-                  />
-                </label>
-                <label className="space-y-2">
-                  <span className="text-sm text-textSoft">显示名称</span>
-                  <input
-                    type="text"
-                    value={assetDraft.name}
-                    onChange={(event) => setAssetDraft((current) => ({ ...current, name: event.target.value }))}
-                    className="w-full rounded-2xl border border-line/80 bg-panel px-4 py-3 text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
-                  />
-                </label>
-                <div className="space-y-3 sm:col-span-2">
+              <div className="mt-4 subtle-panel p-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <label className="space-y-2">
+                    <span className="text-sm text-muted-foreground">Ticker</span>
+                    <input
+                      type="text"
+                      value={assetDraft.ticker}
+                      onChange={(event) => setAssetDraft((current) => ({ ...current, ticker: event.target.value }))}
+                      className="surface-input financial-input"
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="text-sm text-muted-foreground">显示名称</span>
+                    <input
+                      type="text"
+                      value={assetDraft.name}
+                      onChange={(event) => setAssetDraft((current) => ({ ...current, name: event.target.value }))}
+                      className="surface-input"
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="text-sm text-muted-foreground">现有股数</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={assetDraft.currentShares}
+                      placeholder="0"
+                      onChange={(event) => setAssetDraft((current) => ({ ...current, currentShares: normalizeNumericInput(event.target.value) }))}
+                      onBlur={() => setAssetDraft((current) => ({ ...current, currentShares: formatNumericInput(current.currentShares) }))}
+                      className="surface-input financial-input"
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-4">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm text-textSoft">权重</span>
-                    <span className="font-mono text-white">{Math.round((Number(assetDraft.weight) || 0) * 100)}%</span>
+                    <span className="text-sm text-muted-foreground">权重</span>
+                    <span className="data-value">{Math.round((Number(assetDraft.weight) || 0) * 100)}%</span>
                   </div>
                   <input
                     type="range"
@@ -560,14 +618,15 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
                     step="0.01"
                     value={assetDraft.weight}
                     onChange={(event) => setAssetDraft((current) => ({ ...current, weight: Number(event.target.value) }))}
-                    className="w-full accent-blue-400"
+                    className="mt-4 w-full accent-blue-400"
                   />
                 </div>
-                <div className="flex justify-end sm:col-span-2">
+
+                <div className="mt-4 flex justify-end">
                   <button
                     type="button"
                     onClick={saveAssetDraft}
-                    className="rounded-2xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-accent/28 hover:bg-accent/14"
+                    className="control-button-primary"
                   >
                     添加到计划
                   </button>
@@ -575,91 +634,165 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData,
               </div>
             ) : null}
 
-            <div className="space-y-3">
+            <div className="mt-4 space-y-3">
               {form.assets.length ? (
                 form.assets.map((asset) => (
-                  <div key={asset.ticker} className="rounded-2xl border border-line/80 bg-surface p-4">
+                  <div key={asset.ticker} className="subtle-panel p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="font-mono text-base text-white">{asset.ticker}</p>
-                        <p className="text-xs text-muted">{asset.name}</p>
+                        <p className="data-value text-base">{asset.ticker}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{asset.name}</p>
                       </div>
+
                       <button
                         type="button"
                         onClick={() => removeAsset(asset.ticker)}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300 transition hover:bg-red-500/20"
+                        className="control-button-danger"
                       >
                         <Trash2 size={14} />
                         删除
                       </button>
                     </div>
-                    <div className="mt-4 space-y-2">
-                      <div className="flex items-center justify-between gap-4 text-sm text-textSoft">
-                        <span>权重</span>
-                        <span className="font-mono text-white">{Math.round((Number(asset.weight) || 0) * 100)}%</span>
+
+                    <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_240px]">
+                      <div>
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-sm text-muted-foreground">权重</span>
+                          <span className="data-value">{Math.round((Number(asset.weight) || 0) * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={asset.weight}
+                          onChange={(event) => updateAssetWeight(asset.ticker, Number(event.target.value))}
+                          className="mt-4 w-full accent-blue-400"
+                        />
                       </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        value={asset.weight}
-                        onChange={(event) => updateAssetWeight(asset.ticker, Number(event.target.value))}
-                        className="w-full accent-blue-400"
-                      />
+
+                      <label className="space-y-2">
+                        <span className="text-sm text-muted-foreground">现有股数</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={asset.currentShares}
+                          placeholder="0"
+                          onChange={(event) => updateAssetCurrentShares(asset.ticker, normalizeNumericInput(event.target.value))}
+                          onBlur={() => updateAssetCurrentShares(asset.ticker, formatNumericInput(asset.currentShares))}
+                          className="surface-input financial-input"
+                        />
+                      </label>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-line/80 px-4 py-6 text-center text-sm text-muted">
+                <div className="subtle-panel px-4 py-6 text-center text-sm text-muted-foreground">
                   还没有添加标的，请至少添加一个资产。
                 </div>
               )}
             </div>
 
-            <div className={`rounded-2xl border px-4 py-3 text-sm ${isWeightValid ? 'border-green-500/30 bg-green-500/10 text-green-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'}`}>
-              当前总权重：{Math.round(totalWeight * 100)}%
+            <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${isWeightValid ? 'border-positive/30 bg-positive/10 text-emerald-300' : 'border-warning/30 bg-warning/10 text-amber-200'}`}>
+              当前总权重：<span className="data-value">{Math.round(totalWeight * 100)}%</span>
               {!isWeightValid ? '，请调整到 100% 后才能保存。' : '，可以保存计划。'}
             </div>
           </div>
         </div>
       </div>
 
-      <aside className="card p-5">
-        <p className="label">计划概览</p>
-        <h3 className="mt-2 text-xl font-semibold text-white">保存前检查</h3>
-        <div className="mt-6 space-y-4 text-sm leading-7 text-textSoft">
-          <div className="rounded-2xl border border-line/80 bg-elevated/70 p-4">
-            <p>预算模式：<span className="font-medium text-white">{isOpenEnded ? '无限定投' : '固定预算'}</span></p>
-            <p>策略：<span className="font-medium text-white">{form.strategy}</span></p>
-            <p>频率：<span className="font-medium text-white">{form.frequency === 'biweekly' ? '双周' : '月'}</span></p>
-            {isOpenEnded ? (
-              <p>每期目标：<span className="font-mono text-slate-100">{formatMoney(form.periodicTarget)}</span></p>
-            ) : (
-              <>
-                <p>总预算：<span className="font-mono text-white">{formatMoney(form.totalBudget)}</span></p>
-                <p>可投资金：<span className="font-mono text-slate-100">{formatMoney(deployableCash)}</span></p>
-              </>
-            )}
+      <aside className="section-card h-fit xl:sticky xl:top-[5.75rem]">
+        <p className="label">Review</p>
+        <h3 className="section-title">保存前检查</h3>
+
+        <div className="mt-5 grid gap-4">
+          <div className="subtle-panel p-4">
+            <p className="mini-kicker">计划概览</p>
+            <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+              <div className="subtle-row">
+                <span>当前计划</span>
+                <span className="truncate pl-4 text-right text-white">{form.name || '未命名计划'}</span>
+              </div>
+              <div className="subtle-row">
+                <span>预算模式</span>
+                <span className="text-white">{isOpenEnded ? '无限定投' : '固定预算'}</span>
+              </div>
+              <div className="subtle-row">
+                <span>策略</span>
+                <span className="text-white">{form.strategy}</span>
+              </div>
+              <div className="subtle-row">
+                <span>频率</span>
+                <span className="text-white">{form.frequency === 'biweekly' ? '双周' : '月'}</span>
+              </div>
+            </div>
           </div>
-          <div className="rounded-2xl border border-line/80 bg-elevated/70 p-4">
-            <p>标的数量：<span className="text-white">{form.assets.length}</span></p>
-            <p>当前期数：<span className="text-white">第 {Number(form.currentPeriod) + 1} 期</span></p>
-            <p>目标年化：<span className="text-white">{form.strategy === 'VA' ? `${Math.round((Number(form.targetAnnualReturn) || 0) * 100)}%` : '不适用'}</span></p>
+
+          <div className="subtle-panel p-4">
+            <p className="mini-kicker">资金检查</p>
+            <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+              {isOpenEnded ? (
+                <div className="subtle-row">
+                  <span>每期目标</span>
+                  <span className="data-subtle">{formatMoney(form.periodicTarget)}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="subtle-row">
+                    <span>总预算</span>
+                    <span className="data-subtle">{formatMoney(form.totalBudget)}</span>
+                  </div>
+                  <div className="subtle-row">
+                    <span>可投资金</span>
+                    <span className="data-subtle">{formatMoney(deployableCash)}</span>
+                  </div>
+                  <div className="subtle-row">
+                    <span>保留现金</span>
+                    <span className="data-subtle">{formatMoney(reservedCash)}</span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
+
+          <div className="subtle-panel p-4">
+            <p className="mini-kicker">结构检查</p>
+            <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+              <div className="subtle-row">
+                <span>标的数量</span>
+                <span className="data-subtle">{form.assets.length}</span>
+              </div>
+              <div className="subtle-row">
+                <span>当前期数</span>
+                <span className="data-subtle">第 {Number(form.currentPeriod) + 1} 期</span>
+              </div>
+              <div className="subtle-row">
+                <span>目标年化</span>
+                <span className="data-subtle">{form.strategy === 'VA' ? `${Math.round((Number(form.targetAnnualReturn) || 0) * 100)}%` : '不适用'}</span>
+              </div>
+              <div className="subtle-row">
+                <span>权重校验</span>
+                <span className={isWeightValid ? 'text-positive' : 'text-warning'}>
+                  {Math.round(totalWeight * 100)}%
+                </span>
+              </div>
+            </div>
+          </div>
+
           <button
             type="button"
             onClick={handleSave}
             disabled={!canSave}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-accent/20 bg-accent/12 px-4 py-3 font-medium text-slate-100 transition hover:border-accent/28 hover:bg-accent/16 disabled:cursor-not-allowed disabled:border-line disabled:bg-elevated disabled:text-muted"
+            className="control-button-primary w-full disabled:cursor-not-allowed disabled:border-white/[0.05] disabled:bg-white/[0.02] disabled:text-muted"
           >
             <Save size={18} />
             保存计划
           </button>
+
           <button
             type="button"
             onClick={handleClearAll}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-medium text-red-300 transition hover:bg-red-500/20"
+            className="control-button-danger w-full"
           >
             <Trash2 size={18} />
             清除所有数据

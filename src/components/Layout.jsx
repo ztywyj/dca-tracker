@@ -11,50 +11,59 @@ export default function Layout({ activeTab, onChangeTab, children, plans = [], a
   const hasPlans = Array.isArray(plans) && plans.length > 0
 
   return (
-    <div className="min-h-screen bg-radial px-3 pb-28 pt-4 text-white sm:px-6 sm:pt-6 lg:px-8">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:gap-6">
-        <header className="card overflow-hidden p-4 sm:p-5">
-          <div className="min-w-0">
-            <p className="label">个人定投面板</p>
-            <h1 className="heading-display mt-2">DCA Tracker</h1>
-            <p className="body-copy mt-3 max-w-2xl">
-              跟踪每期定投执行、账户累计投入与收益变化，用更清晰的视角管理长期计划。
-            </p>
-            {hasPlans ? (
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <label htmlFor="active-plan-select" className="text-sm text-muted">当前计划</label>
-                <select
-                  id="active-plan-select"
-                  aria-label="切换当前计划"
-                  value={activePlanId}
-                  onChange={(event) => onChangeActivePlan?.(event.target.value)}
-                  className="rounded-2xl border border-line/80 bg-surface px-4 py-2 text-sm text-white outline-none transition focus:border-accent/35 focus:bg-elevated"
-                >
-                  {plans.map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.name || '未命名计划'}
-                    </option>
-                  ))}
-                </select>
+    <div id="root-layout" className="app-shell bg-radial text-white">
+      <div className="app-scroll-area">
+        <header className="topbar-shell sticky top-0 z-40 border-b border-white/[0.06]">
+          <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <p className="label">个人定投面板</p>
+                <h1 className="mt-2 font-sans text-2xl font-semibold tracking-[-0.03em] text-white sm:text-[1.95rem]">
+                  DCA Tracker
+                </h1>
               </div>
-            ) : null}
+
+              {hasPlans ? (
+                <div className="flex min-w-0 flex-col gap-2 lg:min-w-[19rem]">
+                  <label htmlFor="active-plan-select" className="text-xs uppercase tracking-[0.18em] text-muted">
+                    当前计划
+                  </label>
+                  <select
+                    id="active-plan-select"
+                    aria-label="切换当前计划"
+                    value={activePlanId}
+                    onChange={(event) => onChangeActivePlan?.(event.target.value)}
+                    className="topbar-select data-value"
+                  >
+                    {plans.map((plan) => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name || '未命名计划'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
 
-        <main className="min-w-0">{children}</main>
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+          <main className="min-w-0">{children}</main>
+        </div>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-surface/95 backdrop-blur-xl">
-        <div className="mx-auto grid max-w-3xl grid-cols-4 gap-1 px-2 py-2 sm:gap-2 sm:px-3 sm:py-3">
+      <nav className="tab-bar-shell border-t border-white/[0.06] bg-surface/90 backdrop-blur-xl">
+        <div className="mx-auto grid h-[60px] max-w-3xl grid-cols-4 gap-1 px-2 sm:gap-2 sm:px-3">
           {navItems.map((item) => {
             const Icon = item.icon
             const active = item.key === activeTab
+
             return (
               <button
                 key={item.key}
                 type="button"
                 onClick={() => onChangeTab(item.key)}
-                className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-2 py-2 transition sm:px-3 ${
+                className={`flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 transition sm:px-3 ${
                   active ? 'border border-accent/18 bg-accent/10 text-slate-100 shadow-none' : 'border border-transparent text-muted hover:border-line/80 hover:bg-elevated/70 hover:text-white'
                 }`}
               >

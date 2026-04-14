@@ -1,22 +1,45 @@
-import { useMemo, useState } from 'react'
-import { Activity, Banknote, CircleDollarSign, HelpCircle, ShieldEllipsis } from 'lucide-react'
+import { useState } from 'react'
 import {
-  Bar,
-  BarChart,
+  Activity,
+  Banknote,
+  CalendarDays,
+  CircleDollarSign,
+  HelpCircle,
+  Layers3,
+  ShieldEllipsis,
+} from 'lucide-react'
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
   Cell,
-  Legend,
   Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
+  Sector,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
 import { calcAllTargets } from '../utils/vaCalc'
 
-const PIE_COLORS = ['#60a5fa', '#38bdf8', '#22c55e', '#f59e0b', '#94a3b8', '#ef4444']
+const PIE_COLORS = ['#90adff', '#7393df', '#5f789f', '#5c91a1', '#7c8fa8', '#4c5c74']
+
+const chartTickStyle = {
+  fill: '#8893a6',
+  fontFamily: '"IBM Plex Mono", monospace',
+  fontSize: 12,
+}
+
+const chartTooltipStyle = {
+  background: 'rgba(15, 17, 23, 0.98)',
+  border: '1px solid rgba(255, 255, 255, 0.08)',
+  borderRadius: '1rem',
+  color: '#eef3f9',
+  boxShadow: '0 18px 36px rgba(3, 6, 14, 0.34)',
+  fontFamily: '"IBM Plex Mono", monospace',
+}
 
 function formatMoney(value) {
   return new Intl.NumberFormat('en-US', {
@@ -47,15 +70,8 @@ function formatSignedMoney(value) {
   return `${numeric >= 0 ? '+' : '-'}${formatted}`
 }
 
-function getProfitA11yLabel(value) {
-  const numeric = Number(value) || 0
-  return numeric >= 0 ? '盈利' : '亏损'
-}
-
-function getProgressTone(ratio) {
-  if (ratio < 0.55) return 'bg-accent'
-  if (ratio < 0.85) return 'bg-amber-400'
-  return 'bg-negative'
+function getProfitLabel(value) {
+  return (Number(value) || 0) >= 0 ? '盈利' : '亏损'
 }
 
 function getTagLabel(tag) {
@@ -65,23 +81,108 @@ function getTagLabel(tag) {
   return tag || '未标记'
 }
 
-function getTagColor(tag) {
-  if (tag === 'normal') return '#60a5fa'
-  if (tag === 'underweight') return '#f59e0b'
-  if (tag === 'paused') return '#64748b'
-  return '#60a5fa'
+function getTagBadgeClass(tag) {
+  if (tag === 'normal') return 'badge-info'
+  if (tag === 'underweight') return 'badge-warning'
+  if (tag === 'paused') return 'badge-neutral'
+  return 'badge-neutral'
+}
+
+function getProgressToneClass(ratio) {
+  if (ratio < 0.55) return 'bg-accent'
+  if (ratio < 0.85) return 'bg-warning'
+  return 'bg-negative'
+}
+
+function getGapToneClass(value) {
+  if (value >= 0.75) return 'text-accent'
+  if (value <= -0.75) return 'text-warning'
+  return 'text-textSoft'
 }
 
 function GuideBadge({ children }) {
   return (
-    <div className="mt-3 rounded-2xl border border-line/80 bg-elevated/55 px-3 py-2 text-xs leading-5 text-textSoft">
+    <div className="mt-4 subtle-panel px-4 py-3 text-xs leading-5 text-muted-foreground">
       {children}
     </div>
   )
 }
 
+function MetaTile({ label, value, detail, mono = false }) {
+  return (
+    <div className="subtle-panel flex h-full flex-col justify-between p-4">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className={`mt-3 text-sm font-medium text-white ${mono ? 'data-value' : 'font-sans'}`}>{value}</p>
+      {detail ? <p className="mt-2 text-xs text-muted-foreground">{detail}</p> : null}
+    </div>
+  )
+}
+
+function MetricCard({ icon: Icon, label, value, meta, tone = 'text-white' }) {
+  return (
+    <article className="subtle-panel p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+          <p className={`mt-4 data-value text-[1.65rem] font-semibold tracking-[-0.03em] ${tone}`}>{value}</p>
+        </div>
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03] text-muted-foreground">
+          <Icon size={16} />
+        </div>
+      </div>
+      <div className="mt-3 text-sm leading-6 text-muted-foreground">{meta}</div>
+    </article>
+  )
+}
+
+function LegendPill({ color, label }) {
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+      <span>{label}</span>
+    </div>
+  )
+}
+
+function ActiveWeightShape(props) {
+  const {
+    cx,
+    cy,
+    innerRadius,
+    outerRadius,
+    startAngle,
+    endAngle,
+    fill,
+  } = props
+
+  return (
+    <g>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={innerRadius}
+        outerRadius={outerRadius}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+      />
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={outerRadius + 3}
+        outerRadius={outerRadius + 8}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+        opacity={0.34}
+      />
+    </g>
+  )
+}
+
 export default function Dashboard({ plan, records, onNavigate }) {
   const [showGuide, setShowGuide] = useState(false)
+  const [activeWeightIndex, setActiveWeightIndex] = useState(0)
 
   if (!plan) {
     return (
@@ -101,25 +202,27 @@ export default function Dashboard({ plan, records, onNavigate }) {
     return (
       <section className="card p-8 text-center">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <p className="label">暂无执行记录</p>
-            <h2 className="heading-section mt-3">还没有操作记录，去完成第一期定投吧</h2>
-            <p className="body-copy mt-3">创建好计划后，前往“本期操作”录入第一期价格与买入股数。</p>
+          <div className="flex-1 text-left">
+            <p className="label">Overview</p>
+            <h2 className="mt-3 text-[1.45rem] font-semibold tracking-[-0.03em] text-white">还没有操作记录</h2>
+            <p className="body-copy mt-3 max-w-2xl">
+              创建好计划后，前往“本期操作”录入第一期价格与买入股数，总览页会自动生成趋势、仓位和预算检查。
+            </p>
           </div>
           <button
             type="button"
             onClick={() => setShowGuide((current) => !current)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line/80 bg-elevated/70 text-textSoft transition hover:border-accent/20 hover:bg-elevated"
+            className="subtle-panel inline-flex h-10 w-10 items-center justify-center text-muted-foreground transition hover:border-white/10 hover:bg-white/[0.04]"
             aria-label="切换总览说明"
           >
             <HelpCircle size={16} />
           </button>
         </div>
-        {showGuide ? <GuideBadge>总览页会在你产生第一条记录后，展示关键指标、资金进度和图表解释。</GuideBadge> : null}
+        {showGuide ? <GuideBadge>这页会以控制台视角呈现目标偏离、执行节奏和仓位结构，帮助你更快做出本期判断。</GuideBadge> : null}
         <button
           type="button"
           onClick={() => onNavigate('operation')}
-          className="mt-6 rounded-2xl border border-accent/20 bg-accent/12 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-accent/28 hover:bg-accent/16"
+          className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.05] px-5 py-3 text-sm font-medium text-white transition hover:border-white/[0.12] hover:bg-white/[0.07]"
         >
           去完成第一期定投
         </button>
@@ -128,6 +231,10 @@ export default function Dashboard({ plan, records, onNavigate }) {
   }
 
   const latestRecord = planRecords[planRecords.length - 1]
+  const latestDate = latestRecord.date.slice(0, 10)
+  const strategyLabel = plan.strategy === 'VA' ? 'VA 定投' : 'DCA 定投'
+  const frequencyLabel = plan.frequency === 'biweekly' ? '双周' : '每月'
+  const latestTagLabel = getTagLabel(latestRecord.tag)
   const latestPriceMap = Object.fromEntries(latestRecord.assets.map((asset) => [asset.ticker, Number(asset.price) || 0]))
   const marketValue = plan.assets.reduce(
     (sum, asset) => sum + (Number(asset.currentShares) || 0) * (latestPriceMap[asset.ticker] || 0),
@@ -143,314 +250,491 @@ export default function Dashboard({ plan, records, onNavigate }) {
   const drawableBudget = Math.max(0, deployableBudget - totalInvested)
   const targetMatrix = calcAllTargets(plan)
 
-  const valueCurveData = planRecords.map((record) => {
+  let dcaTargetCumulative = 0
+  const trajectoryData = planRecords.map((record) => {
     const periodTargetValues = targetMatrix[record.periodIndex] || []
-    const targetValue = periodTargetValues.reduce((sum, value) => sum + (Number(value) || 0), 0)
-    const actualValue = record.assets.reduce(
-      (sum, asset) => sum + (Number(asset.actualShares) || 0) * (Number(asset.price) || 0),
+    const vaTargetValue = periodTargetValues.reduce((sum, value) => sum + (Number(value) || 0), 0)
+    const dcaTargetIncrement = record.assets.reduce((sum, asset) => sum + (Number(asset.requiredAmount) || 0), 0)
+    dcaTargetCumulative += dcaTargetIncrement
+    const actualPortfolioValue = record.assets.reduce(
+      (sum, asset) => sum + (Number(asset.currentValueBefore) || 0) + (Number(asset.actualAmount) || 0),
       0,
     )
 
     return {
-      label: `第${record.periodIndex + 1}期`,
-      targetValue,
-      actualValue,
+      label: `P${record.periodIndex + 1}`,
+      targetValue: plan.strategy === 'VA' ? vaTargetValue : dcaTargetCumulative,
+      actualValue: actualPortfolioValue,
     }
   })
 
-  const flowData = planRecords.map((record) => ({
-    label: `第${record.periodIndex + 1}期`,
+  const fundingData = planRecords.map((record) => ({
+    label: `P${record.periodIndex + 1}`,
     amount: Number(record.totalActualAmount) || 0,
-    tag: record.tag,
-    tagLabel: getTagLabel(record.tag),
+    cumulative: Number(record.cumulativeInvested) || 0,
   }))
+
+  const averageCostMap = new Map(
+    plan.assets
+      .map((asset) => {
+        const totalShares = Number(asset.currentShares) || 0
+        const cumulativeCost = planRecords.reduce((sum, record) => {
+          const matchedAsset = record.assets.find((item) => item.ticker === asset.ticker)
+          return sum + (Number(matchedAsset?.actualAmount) || 0)
+        }, 0)
+
+        return [
+          asset.ticker,
+          {
+            shares: totalShares,
+            averageCost: totalShares > 0 ? cumulativeCost / totalShares : 0,
+          },
+        ]
+      }),
+  )
 
   const currentWeightData = plan.assets.map((asset, index) => {
     const price = latestPriceMap[asset.ticker] || 0
     const value = (Number(asset.currentShares) || 0) * price
+    const averageCostInfo = averageCostMap.get(asset.ticker) || { shares: 0, averageCost: 0 }
+    const priceGapPct = averageCostInfo.averageCost > 0
+      ? ((price - averageCostInfo.averageCost) / averageCostInfo.averageCost) * 100
+      : 0
+    const actualWeight = marketValue > 0 ? Number(((value / marketValue) * 100).toFixed(2)) : 0
+    const targetWeight = Number(((Number(asset.weight) || 0) * 100).toFixed(2))
+
     return {
       name: asset.ticker,
-      actualWeight: marketValue > 0 ? Number(((value / marketValue) * 100).toFixed(2)) : 0,
-      targetWeight: Number(((Number(asset.weight) || 0) * 100).toFixed(2)),
+      actualWeight,
+      targetWeight,
       value,
       shares: Number(asset.currentShares) || 0,
       latestPrice: price,
+      averageCost: averageCostInfo.averageCost,
+      weightGap: Number((actualWeight - targetWeight).toFixed(2)),
+      priceGapPct,
       color: PIE_COLORS[index % PIE_COLORS.length],
     }
   })
 
-  const averageCostData = plan.assets
-    .map((asset) => {
-      const totalShares = Number(asset.currentShares) || 0
-      const cumulativeCost = planRecords.reduce((sum, record) => {
-        const matchedAsset = record.assets.find((item) => item.ticker === asset.ticker)
-        return sum + (Number(matchedAsset?.actualAmount) || 0)
-      }, 0)
-      const latestPrice = latestPriceMap[asset.ticker] || 0
+  const safeActiveWeightIndex = Math.min(activeWeightIndex, Math.max(currentWeightData.length - 1, 0))
+  const activeWeight = currentWeightData[safeActiveWeightIndex]
 
-      return {
-        ticker: asset.ticker,
-        totalShares,
-        averageCost: totalShares > 0 ? cumulativeCost / totalShares : 0,
-        latestPrice,
-      }
-    })
-    .filter((item) => item.totalShares > 0)
+  const summaryMeta = [
+    {
+      label: '策略',
+      value: strategyLabel,
+      detail: isOpenEnded ? '长期目标模式' : '预算内执行',
+    },
+    {
+      label: '频率',
+      value: frequencyLabel,
+      detail: `已执行 ${planRecords.length} 期`,
+    },
+    {
+      label: '最近记录',
+      value: latestDate,
+      detail: latestTagLabel,
+      mono: true,
+    },
+    {
+      label: '计划状态',
+      value: isOpenEnded ? '持续投入中' : `剩余 ${Math.max((Number(plan.totalPeriods) || 0) - plan.currentPeriod, 0)} 期`,
+      detail: isOpenEnded ? '无固定终点' : '按预算推进',
+    },
+  ]
 
-  const metrics = isOpenEnded
-    ? [
-        {
-          label: '当前总市值',
-          value: formatMoney(marketValue),
-          icon: CircleDollarSign,
-          tone: 'text-white',
-          guide: '所有持仓按最新价格计算的总价值',
-        },
-        {
-          label: '累计总投入',
-          value: formatMoney(totalInvested),
-          icon: Banknote,
-          tone: 'text-white',
-          guide: '你实际花出去的总金额，不含账面盈亏',
-        },
-        {
-          label: '浮动盈亏',
-          value: `${getProfitA11yLabel(floatingProfit)} ${formatSignedMoney(floatingProfit)} · ${formatPercent(floatingProfitPct)}`,
-          icon: Activity,
-          tone: floatingProfit >= 0 ? 'text-positive' : 'text-negative',
-          guide: '当前总市值减去累计投入，正数表示赚钱，负数表示浮亏。',
-        },
-        {
-          label: '已坚持',
-          value: `已坚持 ${planRecords.length} 期`,
-          icon: ShieldEllipsis,
-          tone: 'text-white',
-          guide: '按记录数量统计你已经持续执行了多少期',
-        },
-      ]
-    : [
-        {
-          label: '当前总市值',
-          value: formatMoney(marketValue),
-          icon: CircleDollarSign,
-          tone: 'text-white',
-          guide: '所有持仓按最新价格计算的总价值',
-        },
-        {
-          label: '累计总投入',
-          value: formatMoney(totalInvested),
-          icon: Banknote,
-          tone: 'text-white',
-          guide: '你实际花出去的总金额，不含账面盈亏',
-        },
-        {
-          label: '浮动盈亏',
-          value: `${getProfitA11yLabel(floatingProfit)} ${formatSignedMoney(floatingProfit)} · ${formatPercent(floatingProfitPct)}`,
-          icon: Activity,
-          tone: floatingProfit >= 0 ? 'text-positive' : 'text-negative',
-          guide: '当前总市值减去累计投入，正数表示赚钱，负数表示浮亏。',
-        },
-        {
-          label: '剩余子弹',
-          value: formatMoney(remainingBudget),
-          icon: ShieldEllipsis,
-          tone: 'text-white',
-          guide: '总预算里还没有投入的资金，保留底仓不能全花',
-        },
-      ]
+  const metrics = [
+    {
+      label: '当前总市值',
+      value: formatMoney(marketValue),
+      meta: <>覆盖 <span className="data-subtle">{plan.assets.length}</span> 个标的，按最新价格估值。</>,
+      icon: CircleDollarSign,
+      tone: 'text-white',
+    },
+    {
+      label: '累计总投入',
+      value: formatMoney(totalInvested),
+      meta: <>累计写入 <span className="data-subtle">{planRecords.length}</span> 条执行记录。</>,
+      icon: Banknote,
+      tone: 'text-white',
+    },
+    {
+      label: '浮动盈亏',
+      value: formatSignedMoney(floatingProfit),
+      meta: <>{getProfitLabel(floatingProfit)} <span className="data-subtle">{formatPercent(floatingProfitPct)}</span>，当前仓位对累计投入的偏离。</>,
+      icon: Activity,
+      tone: floatingProfit >= 0 ? 'text-positive' : 'text-negative',
+    },
+    {
+      label: isOpenEnded ? '本期状态' : '剩余可投',
+      value: isOpenEnded ? latestTagLabel : formatMoney(remainingBudget),
+      meta: isOpenEnded
+        ? <>最新记录日期 <span className="data-subtle">{latestDate}</span>。</>
+        : <>保留底仓 <span className="data-subtle">{formatMoney(reserveFloor)}</span>，仍可动用 <span className="data-subtle">{formatMoney(drawableBudget)}</span>。</>,
+      icon: ShieldEllipsis,
+      tone: 'text-white',
+    },
+  ]
 
   return (
     <section className="space-y-5">
-      <div className="flex items-center justify-end">
-        <button
-          type="button"
-          onClick={() => setShowGuide((current) => !current)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line/80 bg-elevated/70 text-textSoft transition hover:border-accent/20 hover:bg-elevated"
-          aria-label="切换总览说明"
-        >
-          <HelpCircle size={16} />
-        </button>
-      </div>
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
+        <div className="space-y-4">
+          <header className="card p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="label">Overview</p>
+                <h2 className="mt-3 text-[1.55rem] font-semibold tracking-[-0.035em] text-white">{plan.name || '当前计划'}</h2>
+              </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)] lg:items-start">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {metrics.map((metric, index) => {
-            const Icon = metric.icon
-            return (
-              <article
-                key={metric.label}
-                className={`rounded-[1.6rem] border border-line/85 bg-panel/92 px-5 py-5 ${index === 0 ? 'sm:col-span-2 lg:col-span-1 lg:min-h-[176px]' : ''}`}
+              <button
+                type="button"
+                onClick={() => setShowGuide((current) => !current)}
+                className="subtle-panel inline-flex h-10 w-10 shrink-0 items-center justify-center text-muted-foreground transition hover:border-white/10 hover:bg-white/[0.04]"
+                aria-label="切换总览说明"
               >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="label">{metric.label}</p>
-                    <p className={`mt-5 font-mono text-[2.1rem] font-semibold tabular-nums ${metric.tone}`}>{metric.value}</p>
-                  </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-line/80 bg-elevated/80 text-textSoft">
-                    <Icon size={18} />
-                  </div>
-                </div>
-                {showGuide ? <GuideBadge>{metric.guide}</GuideBadge> : null}
-              </article>
-            )
-          })}
+                <HelpCircle size={16} />
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {summaryMeta.map((item) => (
+                <MetaTile
+                  key={item.label}
+                  label={item.label}
+                  value={item.value}
+                  detail={item.detail}
+                  mono={item.mono}
+                />
+              ))}
+            </div>
+
+            {showGuide ? <GuideBadge>这一层只保留计划级摘要，让用户在进入指标和图表前先完成上下文定位。</GuideBadge> : null}
+          </header>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {metrics.map((metric) => (
+              <MetricCard
+                key={metric.label}
+                icon={metric.icon}
+                label={metric.label}
+                value={metric.value}
+                meta={metric.meta}
+                tone={metric.tone}
+              />
+            ))}
+          </div>
         </div>
 
-        {isOpenEnded ? (
-          <aside className="card p-5">
-            <p className="label">持仓成本</p>
-            <h2 className="heading-section mt-2">平均成本</h2>
-            {showGuide ? <GuideBadge>按每个标的的累计投入除以累计持仓股数，显示当前平均成本。</GuideBadge> : null}
-            <div className="mt-4 divide-y divide-line/70">
-              {averageCostData.length ? (
-                averageCostData.map((item) => (
-                  <div key={item.ticker} className="grid gap-2 py-4 first:pt-0 last:pb-0">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="font-mono text-white">{item.ticker}</span>
-                      <span className="text-sm text-textSoft">均价 {formatMoneyPrecise(item.averageCost)} / 股</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-4 text-xs text-muted">
-                      <span>持仓 {item.totalShares} 股</span>
-                      <span>现价 {formatMoneyPrecise(item.latestPrice)}</span>
-                    </div>
+        <aside className="card p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="label">Execution Health</p>
+              <h3 className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">计划健康度</h3>
+            </div>
+            <span className={getTagBadgeClass(latestRecord.tag)}>{latestTagLabel}</span>
+          </div>
+
+          <div className="mt-5 space-y-4">
+            {!isOpenEnded ? (
+              <div className="subtle-panel p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm text-muted-foreground">预算推进</p>
+                  <span className="data-subtle text-sm">{Math.round(progressRatio * 100)}%</span>
+                </div>
+                <div className="mt-4 h-2 rounded-full bg-white/[0.05]">
+                  <div
+                    className={`h-2 rounded-full transition-all ${getProgressToneClass(progressRatio)}`}
+                    style={{ width: `${Math.min(progressRatio * 100, 100)}%` }}
+                  />
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div className="subtle-row">
+                    <span>可投资金</span>
+                    <span className="data-subtle">{formatMoney(deployableBudget)}</span>
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-textSoft">暂无可计算的持仓成本数据。</p>
-              )}
-            </div>
-          </aside>
-        ) : (
-          <aside className="card p-5">
-            <p className="label">资金安全垫</p>
-            <h2 className="heading-section mt-2">安全底仓进度</h2>
-            <p className="mt-3 text-sm text-textSoft">
-              已用 {formatMoney(totalInvested)} · 保留下限 {formatMoney(reserveFloor)} · 还可动用 {formatMoney(drawableBudget)}
-            </p>
-            <div className="mt-5 space-y-3">
-              <div className="h-2.5 rounded-full bg-elevated/80">
-                <div
-                  className={`h-2.5 rounded-full transition-all ${getProgressTone(progressRatio)}`}
-                  style={{ width: `${Math.min(progressRatio * 100, 100)}%` }}
-                />
+                  <div className="subtle-row">
+                    <span>保留底仓</span>
+                    <span className="data-subtle">{formatMoney(reserveFloor)}</span>
+                  </div>
+                  <div className="subtle-row">
+                    <span>剩余可投</span>
+                    <span className="data-subtle">{formatMoney(drawableBudget)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-xs text-muted">
-                <span>0%</span>
-                <span>{Math.round(progressRatio * 100)}%</span>
-                <span>100%</span>
+            ) : (
+              <div className="subtle-panel p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm text-muted-foreground">长期执行</p>
+                  <span className="data-subtle text-sm">Open-ended</span>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div className="subtle-row">
+                    <span>累计期数</span>
+                    <span className="data-subtle">{planRecords.length}</span>
+                  </div>
+                  <div className="subtle-row">
+                    <span>最新记录</span>
+                    <span className="data-subtle">{latestDate}</span>
+                  </div>
+                  <div className="subtle-row">
+                    <span>本期状态</span>
+                    <span className="data-subtle">{latestTagLabel}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="subtle-panel p-4">
+              <div className="subtle-row">
+                <span className="inline-flex items-center gap-2">
+                  <CalendarDays size={14} />
+                  最新记录
+                </span>
+                <span className="data-subtle">{latestDate}</span>
+              </div>
+              <div className="mt-3 subtle-row">
+                <span className="inline-flex items-center gap-2">
+                  <Layers3 size={14} />
+                  标的数量
+                </span>
+                <span className="data-subtle">{plan.assets.length}</span>
+              </div>
+              <div className="mt-4 border-t border-white/[0.06] pt-4">
+                <p className="text-sm leading-6 text-muted-foreground">{latestRecord.note || '本期未填写备注，建议在执行页写下这一期的判断。'}</p>
               </div>
             </div>
-            {showGuide ? <GuideBadge>已投金额占总可投金额的比例，红色代表底仓告急</GuideBadge> : null}
-          </aside>
-        )}
+          </div>
+        </aside>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        <article className="card p-5 xl:col-span-2">
-          <p className="label">目标与实际</p>
-          <h3 className="heading-section mt-2">VA目标值 vs 实际持仓价值</h3>
-          {showGuide ? <GuideBadge>蓝色虚线是VA目标值，白线是实际持仓价值，白线高于蓝线说明跑赢了目标</GuideBadge> : null}
-          <div className="mt-6 h-80">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.22fr)_minmax(340px,0.78fr)]">
+        <article className="chart-card">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="label">Portfolio Trajectory</p>
+              <h3 className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">组合轨迹</h3>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <LegendPill color="#7aa2ff" label="实际持仓价值" />
+              <LegendPill color="#dbe8fd" label="目标轨迹" />
+            </div>
+          </div>
+
+          <div className="mt-5 h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={valueCurveData}>
-                <XAxis dataKey="label" stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" />
+              <AreaChart data={trajectoryData}>
+                <defs>
+                  <linearGradient id="trajectoryGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#7aa2ff" stopOpacity={0.24} />
+                    <stop offset="100%" stopColor="#7aa2ff" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.045)" />
+                <XAxis dataKey="label" tick={chartTickStyle} tickLine={false} axisLine={false} />
+                <YAxis tick={chartTickStyle} tickLine={false} axisLine={false} width={72} />
                 <Tooltip
-                  contentStyle={{
-                    background: '#111a26',
-                    border: '1px solid rgba(154,168,189,0.18)',
-                    borderRadius: '1rem',
-                    color: '#eef3f9',
-                    boxShadow: '0 16px 32px rgba(2, 6, 18, 0.42)',
-                  }}
+                  contentStyle={chartTooltipStyle}
                   labelStyle={{ color: '#eef3f9', fontWeight: 600 }}
-                  itemStyle={{ color: '#c8d2e1' }}
-                  cursor={{ fill: 'rgba(96,165,250,0.08)' }}
+                  itemStyle={{ color: '#d7dfeb' }}
+                  cursor={{ stroke: 'rgba(255,255,255,0.08)', strokeWidth: 1 }}
                   formatter={(value) => formatMoney(value)}
                 />
-                <Legend />
-                <Line type="monotone" dataKey="targetValue" stroke="#60a5fa" strokeWidth={2.5} strokeDasharray="6 6" name="目标值" dot={false} />
-                <Line type="monotone" dataKey="actualValue" stroke="#f8fafc" strokeWidth={2.5} name="实际持仓价值" dot={false} />
-              </LineChart>
+                <Area
+                  type="monotone"
+                  dataKey="actualValue"
+                  stroke="#7aa2ff"
+                  fill="url(#trajectoryGradient)"
+                  strokeWidth={2.35}
+                  name="实际持仓价值"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="targetValue"
+                  stroke="#dbe8fd"
+                  strokeWidth={1.7}
+                  strokeDasharray="6 6"
+                  dot={false}
+                  name="目标轨迹"
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </article>
 
-        <article className="card p-5">
-          <p className="label">分期投入</p>
-          <h3 className="heading-section mt-2">每期实际投入金额</h3>
-          {showGuide ? <GuideBadge>每期实际投入金额，灰色柱子代表该期标记为本期暂停</GuideBadge> : null}
-          <div className="mt-6 h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={flowData}>
-                <XAxis dataKey="label" stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" />
-                <Tooltip
-                  contentStyle={{
-                    background: '#111a26',
-                    border: '1px solid rgba(154,168,189,0.18)',
-                    borderRadius: '1rem',
-                    color: '#eef3f9',
-                    boxShadow: '0 16px 32px rgba(2, 6, 18, 0.42)',
-                  }}
-                  labelStyle={{ color: '#eef3f9', fontWeight: 600 }}
-                  itemStyle={{ color: '#c8d2e1' }}
-                  cursor={{ fill: 'rgba(96,165,250,0.08)' }}
-                  formatter={(value, _name) => [formatMoney(value), '投入金额']}
-                />
-                <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
-                  {flowData.map((entry) => (
-                    <Cell key={entry.label} fill={getTagColor(entry.tag)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        <article className="chart-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="label">Allocation</p>
+              <h3 className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">仓位结构</h3>
+            </div>
+            <span className="text-xs text-muted-foreground">Hover / Focus</span>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {flowData.map((item) => (
-              <span key={item.label} className="terminal-chip">
-                {item.label} · {item.tagLabel}
-              </span>
-            ))}
-          </div>
-        </article>
 
-        <article className="card p-5">
-          <p className="label">仓位偏离</p>
-          <h3 className="heading-section mt-2">当前权重 vs 目标权重</h3>
-          {showGuide ? <GuideBadge>当前每个标的的持仓股数和最新价格</GuideBadge> : null}
-          <div className="mt-6 h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Tooltip
-                  contentStyle={{
-                    background: '#111a26',
-                    border: '1px solid rgba(154,168,189,0.18)',
-                    borderRadius: '1rem',
-                    color: '#eef3f9',
-                    boxShadow: '0 16px 32px rgba(2, 6, 18, 0.42)',
-                  }}
-                  formatter={(value, _name, item) => [`${value}%`, `${item.payload.name} 当前权重`]}
-                />
-                <Legend />
-                <Pie data={currentWeightData} dataKey="actualWeight" nameKey="name" innerRadius={70} outerRadius={110} paddingAngle={2}>
-                  {currentWeightData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-4 divide-y divide-line/70">
-            {currentWeightData.map((asset) => (
-              <div key={asset.name} className="grid gap-2 py-4 first:pt-0 last:pb-0 text-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="font-mono text-white">{asset.name}</span>
-                  <span className="text-textSoft">当前 {asset.actualWeight}% / 目标 {asset.targetWeight}%</span>
+          <div className="mt-5 grid gap-5">
+            <div className="relative h-[19rem] subtle-panel p-3">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Tooltip
+                    contentStyle={chartTooltipStyle}
+                    formatter={(value, _name, item) => [`${value}%`, `${item.payload.name} 当前权重`]}
+                  />
+                  <Pie
+                    data={currentWeightData}
+                    dataKey="actualWeight"
+                    nameKey="name"
+                    innerRadius={80}
+                    outerRadius={112}
+                    paddingAngle={2}
+                    activeIndex={safeActiveWeightIndex}
+                    activeShape={ActiveWeightShape}
+                    onMouseEnter={(_, index) => setActiveWeightIndex(index)}
+                  >
+                    {currentWeightData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+
+              {activeWeight ? (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <p className="label">当前聚焦</p>
+                    <p className="mt-3 data-value text-[1.35rem] font-semibold">{activeWeight.name}</p>
+                    <p className="mt-2 data-subtle text-sm">{activeWeight.actualWeight}%</p>
+                    <p className="mt-2 data-subtle text-sm">{formatMoney(activeWeight.value)}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted">{asset.shares} 股 · 最新价格 {formatMoney(asset.latestPrice)}</p>
-              </div>
-            ))}
+              ) : null}
+            </div>
+
+            <div className="grid gap-2.5">
+              {currentWeightData.map((asset, index) => (
+                <button
+                  key={asset.name}
+                  type="button"
+                  onMouseEnter={() => setActiveWeightIndex(index)}
+                  onFocus={() => setActiveWeightIndex(index)}
+                  className={`subtle-panel px-4 py-3 text-left transition ${
+                    index === safeActiveWeightIndex
+                      ? 'border-white/[0.12] bg-white/[0.05]'
+                      : 'hover:border-white/[0.10] hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: asset.color }} />
+                      <span className="data-value text-sm">{asset.name}</span>
+                    </div>
+                    <span className="data-subtle text-sm">{asset.actualWeight}%</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-4 text-xs text-muted-foreground">
+                    <span>目标 {asset.targetWeight}%</span>
+                    <span className={`data-subtle ${getGapToneClass(asset.weightGap)}`}>
+                      {asset.weightGap >= 0 ? '+' : ''}{asset.weightGap}%
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
+        <article className="chart-card">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="label">Funding Rhythm</p>
+              <h3 className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">投入节奏</h3>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <LegendPill color="#7aa2ff" label="本期投入" />
+              <LegendPill color="#f3f7ff" label="累计投入" />
+            </div>
+          </div>
+
+          <div className="mt-5 h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={fundingData}>
+                <defs>
+                  <linearGradient id="fundingAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#7aa2ff" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#7aa2ff" stopOpacity={0.015} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.045)" />
+                <XAxis dataKey="label" tick={chartTickStyle} tickLine={false} axisLine={false} />
+                <YAxis tick={chartTickStyle} tickLine={false} axisLine={false} width={72} />
+                <Tooltip
+                  contentStyle={chartTooltipStyle}
+                  labelStyle={{ color: '#eef3f9', fontWeight: 600 }}
+                  itemStyle={{ color: '#d7dfeb' }}
+                  formatter={(value, name) => [formatMoney(value), name === 'amount' ? '本期投入' : '累计投入']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="amount"
+                  stroke="#7aa2ff"
+                  fill="url(#fundingAreaGradient)"
+                  strokeWidth={2.15}
+                  name="本期投入"
+                />
+                <Line type="monotone" dataKey="cumulative" stroke="#f3f7ff" strokeWidth={1.8} dot={false} name="累计投入" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        <article className="chart-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="label">Checks</p>
+              <h3 className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">关键检查点</h3>
+            </div>
+            <span className="text-xs text-muted-foreground">Avg cost / latest / gap</span>
+          </div>
+
+          <div className="mt-5 overflow-hidden rounded-[1rem] border border-white/[0.06]">
+            <div className="grid grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)] gap-3 bg-white/[0.03] px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              <span>Ticker</span>
+              <span>平均成本</span>
+              <span>最新价格</span>
+              <span className="text-right">权重偏离</span>
+            </div>
+
+            <div className="divide-y divide-white/[0.06]">
+              {currentWeightData.map((asset) => (
+                <div
+                  key={asset.name}
+                  className="grid grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)] items-center gap-3 px-4 py-3 text-sm"
+                >
+                  <div>
+                    <p className="data-value text-sm">{asset.name}</p>
+                    <p className="mt-1 data-subtle text-xs">{asset.shares} 股</p>
+                  </div>
+                  <div>
+                    <p className="data-subtle text-sm">{formatMoneyPrecise(asset.averageCost)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">仓位 <span className="data-subtle">{asset.actualWeight}%</span></p>
+                  </div>
+                  <div>
+                    <p className="data-subtle text-sm">{formatMoneyPrecise(asset.latestPrice)}</p>
+                    <p className={`mt-1 text-xs ${asset.priceGapPct >= 0 ? 'text-positive' : 'text-negative'}`}>
+                      {formatPercent(asset.priceGapPct)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`data-subtle text-sm ${getGapToneClass(asset.weightGap)}`}>
+                      {asset.weightGap >= 0 ? '+' : ''}{asset.weightGap}%
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">目标 <span className="data-subtle">{asset.targetWeight}%</span></p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </article>
       </div>

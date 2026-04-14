@@ -4,7 +4,7 @@
 
 :root {
   color: #eef3f9;
-  background: #0d1017;
+  background: #0f1117;
   font-family: 'Public Sans', system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -18,6 +18,8 @@
 }
 
 html {
+  height: 100%;
+  overflow: hidden;
   scroll-behavior: smooth;
 }
 
@@ -36,10 +38,13 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
   background:
-    radial-gradient(circle at top, rgba(96, 165, 250, 0.05), transparent 24%),
-    linear-gradient(180deg, #0d1017 0%, #0b1017 100%);
+    radial-gradient(circle at top left, rgba(122, 162, 255, 0.08), transparent 28%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.035), transparent 24%),
+    linear-gradient(180deg, #0f1117 0%, #121620 100%);
   color: #eef3f9;
 }
 
@@ -50,52 +55,222 @@ select {
 }
 
 #root {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-line/85 bg-panel shadow-glow;
+    @apply rounded-[1.3rem] border border-white/[0.08] bg-panel/90 shadow-none backdrop-blur-sm;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 16px 36px rgba(3, 6, 14, 0.24);
   }
 
   .label {
-    @apply text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted;
+    @apply text-[0.67rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground;
   }
 
   .value {
     @apply font-mono text-2xl font-semibold tabular-nums text-white;
   }
 
+  .data-value {
+    @apply font-mono tabular-nums text-white;
+  }
+
+  .data-subtle {
+    @apply font-mono tabular-nums text-textSoft;
+  }
+
   .heading-display {
-    @apply font-display text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl;
+    @apply font-sans text-2xl font-semibold tracking-[-0.03em] text-white sm:text-[1.95rem];
   }
 
   .heading-section {
-    @apply text-xl font-semibold tracking-[-0.015em] text-white;
+    @apply font-sans text-[1.05rem] font-semibold tracking-[-0.02em] text-white;
   }
 
   .body-copy {
-    @apply text-sm leading-6 text-textSoft;
+    @apply text-sm leading-6 text-muted-foreground;
   }
 
   .terminal-chip {
-    @apply rounded-full border border-line/80 bg-elevated/80 px-3 py-1 text-xs text-textSoft;
+    @apply rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs text-muted-foreground;
+  }
+
+  .badge-base {
+    @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold;
+  }
+
+  .badge-info {
+    @apply badge-base border-accent/25 bg-accent/10 text-sky-100;
+  }
+
+  .badge-positive {
+    @apply badge-base border-positive/30 bg-positive/10 text-emerald-300;
+  }
+
+  .badge-negative {
+    @apply badge-base border-negative/30 bg-negative/10 text-rose-300;
+  }
+
+  .badge-warning {
+    @apply badge-base border-warning/30 bg-warning/10 text-amber-200;
+  }
+
+  .badge-neutral {
+    @apply badge-base border-white/[0.08] bg-white/[0.03] text-muted-foreground;
+  }
+
+  .topbar-shell {
+    background:
+      linear-gradient(180deg, rgba(16, 19, 27, 0.95) 0%, rgba(16, 19, 27, 0.84) 100%);
+    backdrop-filter: blur(22px);
+  }
+
+  .topbar-select {
+    @apply rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition;
+  }
+
+  .topbar-select:focus {
+    @apply border-accent/35 bg-white/[0.05];
+  }
+
+  .chart-card {
+    @apply card p-5;
+  }
+
+  .subtle-panel {
+    @apply rounded-[1.15rem] border border-white/[0.06] bg-white/[0.025];
+  }
+
+  .subtle-row {
+    @apply flex items-center justify-between gap-4 text-sm text-muted-foreground;
+  }
+
+  .section-shell {
+    @apply space-y-5;
+  }
+
+  .section-card {
+    @apply card p-5;
+  }
+
+  .section-title {
+    @apply mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-white;
+  }
+
+  .muted-copy {
+    @apply text-sm leading-6 text-muted-foreground;
+  }
+
+  .control-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-white transition;
+  }
+
+  .control-button:hover {
+    @apply border-white/[0.12] bg-white/[0.05];
+  }
+
+  .control-button:disabled {
+    @apply cursor-not-allowed border-white/[0.05] bg-white/[0.02] text-muted;
+  }
+
+  .control-button-primary {
+    @apply control-button border-accent/20 bg-accent/10 text-slate-50;
+  }
+
+  .control-button-primary:hover {
+    @apply border-accent/25 bg-accent/20;
+  }
+
+  .control-button-danger {
+    @apply control-button border-negative/20 bg-negative/10 text-rose-200;
+  }
+
+  .control-button-danger:hover {
+    @apply border-negative/30 bg-negative/20 text-rose-100;
+  }
+
+  .filter-chip {
+    @apply inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-muted-foreground transition;
+  }
+
+  .filter-chip:hover {
+    @apply border-white/[0.12] bg-white/[0.05] text-white;
+  }
+
+  .filter-chip-active {
+    @apply border-accent/20 bg-accent/10 text-slate-50;
+  }
+
+  .surface-input {
+    @apply w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-white outline-none transition;
+  }
+
+  .surface-input:focus {
+    @apply border-accent/35 bg-white/[0.05];
+    box-shadow: 0 0 0 1px rgba(122, 162, 255, 0.12);
+  }
+
+  .surface-textarea {
+    @apply surface-input min-h-[7rem] resize-y;
+  }
+
+  .surface-select {
+    @apply surface-input;
+  }
+
+  .surface-stat {
+    @apply subtle-panel p-4;
+  }
+
+  .surface-grid {
+    @apply grid gap-4;
+  }
+
+  .surface-divider {
+    @apply border-t border-white/[0.06];
+  }
+
+  .mini-kicker {
+    @apply text-[11px] uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  .app-shell {
+    @apply flex min-h-0 flex-1 flex-col;
+  }
+
+  .app-scroll-area {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-bar-shell {
+    flex-shrink: 0;
+    min-height: 60px;
   }
 
   .operation-asset-card {
-    border: 1px solid rgba(50, 65, 91, 0.95);
-    border-radius: 1.5rem;
-    background: linear-gradient(180deg, rgba(19, 26, 37, 0.97) 0%, rgba(16, 22, 33, 0.99) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.3rem;
+    background: linear-gradient(180deg, rgba(21, 25, 35, 0.94) 0%, rgba(18, 22, 32, 0.92) 100%);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.02),
-      0 14px 32px rgba(2, 6, 18, 0.3);
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 16px 36px rgba(3, 6, 14, 0.24);
   }
 
   .operation-weight-chip {
-    border: 1px solid #31405d;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 999px;
-    background: #1c2536;
-    color: #dbe8fd;
+    background: rgba(255, 255, 255, 0.04);
+    color: #d7dfeb;
     font-size: 0.74rem;
     font-weight: 600;
     letter-spacing: 0.02em;
@@ -104,29 +279,29 @@ select {
   }
 
   .operation-kicker {
-    color: #f0f5ff;
-    font-size: 0.9rem;
+    color: #eef3f9;
+    font-size: 0.84rem;
     font-weight: 600;
-    letter-spacing: 0.01em;
+    letter-spacing: -0.01em;
   }
 
   .operation-helper {
-    color: #9fb2ce;
-    font-size: 0.84rem;
+    color: #98a3b6;
+    font-size: 0.8rem;
     line-height: 1.6;
   }
 
   .operation-divider {
     height: 1px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.06);
   }
 
   .operation-action-button {
     align-items: center;
-    background: #1c2536;
-    border: 1px solid #31405d;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 999px;
-    color: #ebf3ff;
+    color: #eef3f9;
     display: inline-flex;
     font-size: 0.82rem;
     font-weight: 600;
@@ -140,9 +315,8 @@ select {
   }
 
   .operation-action-button:hover {
-    background: #202b3f;
-    border-color: rgba(96, 165, 250, 0.34);
-    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
   }
 
   .operation-action-button:disabled {
@@ -153,10 +327,10 @@ select {
 
   .operation-field {
     width: 100%;
-    background: #0c1119;
-    border: 1px solid #24324b;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 1.15rem;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
     color: #ffffff;
     font-family: 'IBM Plex Mono', monospace;
     font-variant-numeric: tabular-nums;
@@ -169,15 +343,15 @@ select {
   }
 
   .operation-field::placeholder {
-    color: #70829d;
+    color: #798498;
   }
 
   .operation-field:focus {
-    background: #0f1723;
-    border-color: rgba(96, 165, 250, 0.45);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(122, 162, 255, 0.35);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.02),
-      0 0 0 1px rgba(96, 165, 250, 0.12);
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 0 0 1px rgba(122, 162, 255, 0.12);
   }
 
   .operation-price-field {
@@ -187,9 +361,9 @@ select {
   }
 
   .operation-share-field {
-    font-size: 1.45rem;
+    font-size: clamp(1.45rem, 1.8vw, 1.75rem);
     line-height: 1;
-    min-height: 3.55rem;
+    min-height: 4.35rem;
   }
 
   .operation-status-pill {
@@ -206,33 +380,33 @@ select {
   }
 
   .operation-status-pill-auto {
-    background: rgba(56, 189, 248, 0.12);
-    border: 1px solid rgba(56, 189, 248, 0.32);
-    color: #d8f4ff;
+    background: rgba(103, 166, 255, 0.12);
+    border: 1px solid rgba(103, 166, 255, 0.2);
+    color: #dbe8ff;
   }
 
   .operation-status-pill-manual {
-    background: #1a2333;
-    border: 1px solid #31405d;
-    color: #dce8fb;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #c7d0de;
   }
 
   .operation-metric-card {
-    background: #0d121b;
-    border: 1px solid #28354a;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 1.2rem;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
 
   .operation-accent-card {
-    background: #1a2333;
-    border: 1px solid #31405d;
+    background: rgba(122, 162, 255, 0.08);
+    border: 1px solid rgba(122, 162, 255, 0.16);
     border-radius: 1.2rem;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   }
 
   .operation-metric-label {
-    color: #b9ceec;
+    color: #98a3b6;
     font-size: 0.74rem;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -245,5 +419,9 @@ select {
     font-variant-numeric: tabular-nums;
     line-height: 1.08;
     margin-top: 0.85rem;
+  }
+
+  .financial-input {
+    @apply font-mono tabular-nums;
   }
 }
