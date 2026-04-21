@@ -436,7 +436,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                     <button
                       type="button"
                       onClick={() => startEditing(record)}
-                      className="control-button"
+                      className="control-button-positive"
                     >
                       <Pencil size={16} />
                       编辑

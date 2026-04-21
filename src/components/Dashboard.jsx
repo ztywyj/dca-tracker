@@ -4,7 +4,6 @@ import {
   Banknote,
   CalendarDays,
   CircleDollarSign,
-  HelpCircle,
   Layers3,
   ShieldEllipsis,
 } from 'lucide-react'
@@ -24,7 +23,7 @@ import {
 } from 'recharts'
 import { calcAllTargets } from '../utils/vaCalc'
 
-const PIE_COLORS = ['#90adff', '#7393df', '#5f789f', '#5c91a1', '#7c8fa8', '#4c5c74']
+const PIE_COLORS = ['#8ea9ff', '#51d0bf', '#f2b36f', '#c98bff', '#ff8f9d', '#7e90ff']
 
 const chartTickStyle = {
   fill: '#8893a6',
@@ -100,14 +99,6 @@ function getGapToneClass(value) {
   return 'text-textSoft'
 }
 
-function GuideBadge({ children }) {
-  return (
-    <div className="mt-4 subtle-panel px-4 py-3 text-xs leading-5 text-muted-foreground">
-      {children}
-    </div>
-  )
-}
-
 function MetaTile({ label, value, detail, mono = false }) {
   return (
     <div className="subtle-panel flex h-full flex-col justify-between p-4">
@@ -181,7 +172,6 @@ function ActiveWeightShape(props) {
 }
 
 export default function Dashboard({ plan, records, onNavigate }) {
-  const [showGuide, setShowGuide] = useState(false)
   const [activeWeightIndex, setActiveWeightIndex] = useState(0)
 
   if (!plan) {
@@ -209,16 +199,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
               创建好计划后，前往“本期操作”录入第一期价格与买入股数，总览页会自动生成趋势、仓位和预算检查。
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowGuide((current) => !current)}
-            className="subtle-panel inline-flex h-10 w-10 items-center justify-center text-muted-foreground transition hover:border-white/10 hover:bg-white/[0.04]"
-            aria-label="切换总览说明"
-          >
-            <HelpCircle size={16} />
-          </button>
         </div>
-        {showGuide ? <GuideBadge>这页会以控制台视角呈现目标偏离、执行节奏和仓位结构，帮助你更快做出本期判断。</GuideBadge> : null}
         <button
           type="button"
           onClick={() => onNavigate('operation')}
@@ -388,14 +369,6 @@ export default function Dashboard({ plan, records, onNavigate }) {
                 <h2 className="mt-3 text-[1.55rem] font-semibold tracking-[-0.035em] text-white">{plan.name || '当前计划'}</h2>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowGuide((current) => !current)}
-                className="subtle-panel inline-flex h-10 w-10 shrink-0 items-center justify-center text-muted-foreground transition hover:border-white/10 hover:bg-white/[0.04]"
-                aria-label="切换总览说明"
-              >
-                <HelpCircle size={16} />
-              </button>
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -410,7 +383,6 @@ export default function Dashboard({ plan, records, onNavigate }) {
               ))}
             </div>
 
-            {showGuide ? <GuideBadge>这一层只保留计划级摘要，让用户在进入指标和图表前先完成上下文定位。</GuideBadge> : null}
           </header>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

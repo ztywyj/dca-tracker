@@ -30,6 +30,11 @@ function roundToTwo(value) {
   return Number((Number(value) || 0).toFixed(2))
 }
 
+function formatPriceDisplay(value) {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric.toFixed(2) : ''
+}
+
 function getDecisionButtonClass(active) {
   return active ? 'filter-chip filter-chip-active justify-center' : 'filter-chip justify-center'
 }
@@ -144,7 +149,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
     if (typeof result.price === 'number') {
       updateAssetState(ticker, {
         loading: false,
-        price: typeof result.price === 'number' ? formatNumericInput(result.price) : '',
+        price: formatPriceDisplay(result.price),
         priceSource: 'auto',
         fetchError: '',
       })
@@ -298,13 +303,13 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                         }
 
                         updateAssetState(asset.ticker, {
-                          price: formatNumericInput(asset.price),
+                          price: formatPriceDisplay(asset.price),
                         })
                       }}
                       className="operation-field operation-price-field financial-input"
                     />
                   </div>
-                  <div className="mt-4 subtle-row">
+                  <div className="mt-4 subtle-row operation-footer-row">
                     <span className="text-sm text-muted-foreground">可手动输入</span>
                     <button
                       type="button"
@@ -345,9 +350,9 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                       className="operation-field operation-share-field financial-input"
                     />
                   </div>
-                  <div className="mt-4 subtle-row">
-                    <span>实际投入金额</span>
-                    <span className="data-subtle">{formatMoney(asset.actualAmount)}</span>
+                  <div className="mt-4 subtle-row operation-footer-row">
+                    <span className="text-sm text-muted-foreground">实际投入金额</span>
+                    <span className="operation-metric-value operation-footer-value">{formatMoney(asset.actualAmount)}</span>
                   </div>
                 </div>
               </div>

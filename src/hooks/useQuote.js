@@ -3,6 +3,11 @@ import { useCallback, useEffect, useState } from 'react'
 const API_BASE_URL = 'https://api.twelvedata.com/price'
 const API_KEY = import.meta.env.VITE_TWELVE_DATA_KEY
 
+function roundQuotePrice(value) {
+  const numeric = Number.parseFloat(value)
+  return Number.isFinite(numeric) ? Number(numeric.toFixed(2)) : null
+}
+
 function getReadableErrorMessage(data, error) {
   if (!API_KEY) {
     return '未配置 Twelve Data API Key，请检查 .env 或部署环境变量。'
@@ -54,10 +59,11 @@ export async function fetchQuote(ticker) {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
     const data = await res.json()
+    const roundedPrice = roundQuotePrice(data?.price)
 
-    if (data?.price) {
+    if (roundedPrice !== null) {
       return {
-        price: Number.parseFloat(data.price),
+        price: roundedPrice,
         error: '',
       }
     }

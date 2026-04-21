@@ -5,6 +5,7 @@
 :root {
   color: #eef3f9;
   background: #0f1117;
+  color-scheme: dark;
   font-family: 'Public Sans', system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -136,6 +137,19 @@ select {
     @apply rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition;
   }
 
+  .topbar-select,
+  .surface-select {
+    color-scheme: dark;
+  }
+
+  .topbar-select option,
+  .surface-select option,
+  .topbar-select optgroup,
+  .surface-select optgroup {
+    background-color: #151923;
+    color: #eef3f9;
+  }
+
   .topbar-select:focus {
     @apply border-accent/35 bg-white/[0.05];
   }
@@ -186,6 +200,14 @@ select {
 
   .control-button-primary:hover {
     @apply border-accent/25 bg-accent/20;
+  }
+
+  .control-button-positive {
+    @apply control-button border-positive/20 bg-positive/10 text-emerald-200;
+  }
+
+  .control-button-positive:hover {
+    @apply border-positive/30 bg-positive/20 text-emerald-100;
   }
 
   .control-button-danger {
@@ -389,6 +411,30 @@ select {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: #c7d0de;
+  }
+
+  .operation-footer-row {
+    align-items: center;
+    column-gap: 0.9rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 8.5rem;
+    min-height: 2.75rem;
+  }
+
+  .operation-footer-row .operation-action-button {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .operation-footer-value {
+    align-items: center;
+    display: inline-flex;
+    justify-content: flex-start;
+    line-height: 1;
+    min-height: 2.7rem;
+    min-width: 0;
+    text-align: left;
+    width: 100%;
   }
 
   .operation-metric-card {
