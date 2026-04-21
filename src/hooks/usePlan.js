@@ -3,6 +3,11 @@ import { loadActivePlanId, loadPlan, loadPlans, saveActivePlanId, savePlan, save
 
 const defaultPlan = null
 const OPEN_ENDED_PLACEHOLDER_PERIODS = 9999
+const MAX_RESERVE_RATIO = 0.3
+
+function clampReserveRatio(value) {
+  return Math.min(MAX_RESERVE_RATIO, Math.max(0, Number(value) || 0))
+}
 
 function createEmptyPlan() {
   return {
@@ -31,6 +36,7 @@ function normalizePlan(plan) {
     ...createEmptyPlan(),
     ...plan,
     budgetMode,
+    reserveRatio: budgetMode === 'open-ended' ? 0 : clampReserveRatio(plan.reserveRatio),
     periodicTarget: Number(plan.periodicTarget) || 0,
     totalPeriods: budgetMode === 'open-ended'
       ? Math.max(Number(plan.totalPeriods) || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)

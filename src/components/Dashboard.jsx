@@ -1,12 +1,5 @@
 import { useState } from 'react'
-import {
-  Activity,
-  Banknote,
-  CalendarDays,
-  CircleDollarSign,
-  Layers3,
-  ShieldEllipsis,
-} from 'lucide-react'
+import { CalendarDays, Layers3 } from 'lucide-react'
 import {
   Area,
   AreaChart,
@@ -21,7 +14,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { calcAllTargets } from '../utils/vaCalc'
 
 const PIE_COLORS = ['#8ea9ff', '#51d0bf', '#f2b36f', '#c98bff', '#ff8f9d', '#7e90ff']
 
@@ -58,9 +50,25 @@ function formatMoneyPrecise(value) {
   }).format(Number(value) || 0)
 }
 
+function formatCompactMoney(value) {
+  const numeric = Number(value) || 0
+  if (Math.abs(numeric) >= 1000) {
+    return `$${(numeric / 1000).toFixed(Math.abs(numeric) >= 10000 ? 0 : 1)}k`
+  }
+  return `$${Math.round(numeric)}`
+}
+
 function formatPercent(value) {
   const numeric = Number(value) || 0
   return `${numeric >= 0 ? '+' : ''}${numeric.toFixed(2)}%`
+}
+
+function formatMultiple(value) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return '--'
+  }
+  return `${numeric.toFixed(2)}x`
 }
 
 function formatSignedMoney(value) {
@@ -109,17 +117,12 @@ function MetaTile({ label, value, detail, mono = false }) {
   )
 }
 
-function MetricCard({ icon: Icon, label, value, meta, tone = 'text-white' }) {
+function MetricCard({ label, value, meta, tone = 'text-white' }) {
   return (
-    <article className="subtle-panel p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-          <p className={`mt-4 data-value text-[1.65rem] font-semibold tracking-[-0.03em] ${tone}`}>{value}</p>
-        </div>
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03] text-muted-foreground">
-          <Icon size={16} />
-        </div>
+    <article className="subtle-panel dashboard-metric-card p-5">
+      <div className="min-w-0">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+        <p className={`mt-4 data-value text-[1.65rem] font-semibold tracking-[-0.03em] ${tone}`}>{value}</p>
       </div>
       <div className="mt-3 text-sm leading-6 text-muted-foreground">{meta}</div>
     </article>
@@ -229,23 +232,22 @@ export default function Dashboard({ plan, records, onNavigate }) {
   const reserveFloor = (Number(plan.totalBudget) || 0) * (Number(plan.reserveRatio) || 0)
   const progressRatio = deployableBudget > 0 ? Math.min(totalInvested / deployableBudget, 1) : 0
   const drawableBudget = Math.max(0, deployableBudget - totalInvested)
-  const targetMatrix = calcAllTargets(plan)
 
-  let dcaTargetCumulative = 0
-  const trajectoryData = planRecords.map((record) => {
-    const periodTargetValues = targetMatrix[record.periodIndex] || []
-    const vaTargetValue = periodTargetValues.reduce((sum, value) => sum + (Number(value) || 0), 0)
-    const dcaTargetIncrement = record.assets.reduce((sum, asset) => sum + (Number(asset.requiredAmount) || 0), 0)
-    dcaTargetCumulative += dcaTargetIncrement
-    const actualPortfolioValue = record.assets.reduce(
+  const performanceData = planRecords.map((record) => {
+    const marketValueAtClose = record.assets.reduce(
       (sum, asset) => sum + (Number(asset.currentValueBefore) || 0) + (Number(asset.actualAmount) || 0),
       0,
     )
+    const cumulativeInvested = Number(record.cumulativeInvested) || 0
+    const periodAmount = Number(record.totalActualAmount) || 0
+    const netResult = marketValueAtClose - cumulativeInvested
 
     return {
       label: `P${record.periodIndex + 1}`,
-      targetValue: plan.strategy === 'VA' ? vaTargetValue : dcaTargetCumulative,
-      actualValue: actualPortfolioValue,
+      marketValue: marketValueAtClose,
+      cumulativeInvested,
+      periodAmount,
+      netResult,
     }
   })
 
@@ -256,22 +258,21 @@ export default function Dashboard({ plan, records, onNavigate }) {
   }))
 
   const averageCostMap = new Map(
-    plan.assets
-      .map((asset) => {
-        const totalShares = Number(asset.currentShares) || 0
-        const cumulativeCost = planRecords.reduce((sum, record) => {
-          const matchedAsset = record.assets.find((item) => item.ticker === asset.ticker)
-          return sum + (Number(matchedAsset?.actualAmount) || 0)
-        }, 0)
+    plan.assets.map((asset) => {
+      const totalShares = Number(asset.currentShares) || 0
+      const cumulativeCost = planRecords.reduce((sum, record) => {
+        const matchedAsset = record.assets.find((item) => item.ticker === asset.ticker)
+        return sum + (Number(matchedAsset?.actualAmount) || 0)
+      }, 0)
 
-        return [
-          asset.ticker,
-          {
-            shares: totalShares,
-            averageCost: totalShares > 0 ? cumulativeCost / totalShares : 0,
-          },
-        ]
-      }),
+      return [
+        asset.ticker,
+        {
+          shares: totalShares,
+          averageCost: totalShares > 0 ? cumulativeCost / totalShares : 0,
+        },
+      ]
+    }),
   )
 
   const currentWeightData = plan.assets.map((asset, index) => {
@@ -300,6 +301,23 @@ export default function Dashboard({ plan, records, onNavigate }) {
 
   const safeActiveWeightIndex = Math.min(activeWeightIndex, Math.max(currentWeightData.length - 1, 0))
   const activeWeight = currentWeightData[safeActiveWeightIndex]
+  const latestPerformancePoint = performanceData[performanceData.length - 1] || {
+    label: latestDate,
+    marketValue,
+    cumulativeInvested: totalInvested,
+    periodAmount: Number(latestRecord.totalActualAmount) || 0,
+    netResult: floatingProfit,
+  }
+  const strongestPerformancePoint = performanceData.reduce(
+    (best, point) => (point.netResult > best.netResult ? point : best),
+    performanceData[0] || latestPerformancePoint,
+  )
+  const averagePeriodAmount = performanceData.length
+    ? performanceData.reduce((sum, point) => sum + point.periodAmount, 0) / performanceData.length
+    : 0
+  const capitalMultiple = latestPerformancePoint.cumulativeInvested > 0
+    ? latestPerformancePoint.marketValue / latestPerformancePoint.cumulativeInvested
+    : 0
 
   const summaryMeta = [
     {
@@ -330,21 +348,18 @@ export default function Dashboard({ plan, records, onNavigate }) {
       label: '当前总市值',
       value: formatMoney(marketValue),
       meta: <>覆盖 <span className="data-subtle">{plan.assets.length}</span> 个标的，按最新价格估值。</>,
-      icon: CircleDollarSign,
       tone: 'text-white',
     },
     {
       label: '累计总投入',
       value: formatMoney(totalInvested),
       meta: <>累计写入 <span className="data-subtle">{planRecords.length}</span> 条执行记录。</>,
-      icon: Banknote,
       tone: 'text-white',
     },
     {
       label: '浮动盈亏',
       value: formatSignedMoney(floatingProfit),
       meta: <>{getProfitLabel(floatingProfit)} <span className="data-subtle">{formatPercent(floatingProfitPct)}</span>，当前仓位对累计投入的偏离。</>,
-      icon: Activity,
       tone: floatingProfit >= 0 ? 'text-positive' : 'text-negative',
     },
     {
@@ -353,7 +368,6 @@ export default function Dashboard({ plan, records, onNavigate }) {
       meta: isOpenEnded
         ? <>最新记录日期 <span className="data-subtle">{latestDate}</span>。</>
         : <>保留底仓 <span className="data-subtle">{formatMoney(reserveFloor)}</span>，仍可动用 <span className="data-subtle">{formatMoney(drawableBudget)}</span>。</>,
-      icon: ShieldEllipsis,
       tone: 'text-white',
     },
   ]
@@ -368,7 +382,6 @@ export default function Dashboard({ plan, records, onNavigate }) {
                 <p className="label">Overview</p>
                 <h2 className="mt-3 text-[1.55rem] font-semibold tracking-[-0.035em] text-white">{plan.name || '当前计划'}</h2>
               </div>
-
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -382,14 +395,12 @@ export default function Dashboard({ plan, records, onNavigate }) {
                 />
               ))}
             </div>
-
           </header>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {metrics.map((metric) => (
               <MetricCard
                 key={metric.label}
-                icon={metric.icon}
                 label={metric.label}
                 value={metric.value}
                 meta={metric.meta}
@@ -483,53 +494,98 @@ export default function Dashboard({ plan, records, onNavigate }) {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.22fr)_minmax(340px,0.78fr)]">
-        <article className="chart-card">
+        <article className="chart-card flex min-h-[32rem] flex-col">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="label">Portfolio Trajectory</p>
-              <h3 className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">组合轨迹</h3>
+              <p className="label">Capital Progress</p>
+              <h3 className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-white">投入与市值</h3>
             </div>
             <div className="flex flex-wrap gap-4">
-              <LegendPill color="#7aa2ff" label="实际持仓价值" />
-              <LegendPill color="#dbe8fd" label="目标轨迹" />
+              <LegendPill color="#7aa2ff" label="组合市值" />
+              <LegendPill color="#e9eefb" label="累计投入" />
             </div>
           </div>
 
-          <div className="mt-5 h-80">
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="subtle-panel p-4">
+              <p className="mini-kicker">当前差额</p>
+              <p className={`mt-3 data-value text-xl ${latestPerformancePoint.netResult >= 0 ? 'text-positive' : 'text-negative'}`}>
+                {formatSignedMoney(latestPerformancePoint.netResult)}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">最新一期组合市值减去累计投入。</p>
+            </div>
+            <div className="subtle-panel p-4">
+              <p className="mini-kicker">市值 / 投入</p>
+              <p className="mt-3 data-value text-xl">{formatMultiple(capitalMultiple)}</p>
+              <p className="mt-2 text-xs text-muted-foreground">越高说明资金投入后的账面效率越强。</p>
+            </div>
+            <div className="subtle-panel p-4">
+              <p className="mini-kicker">最佳阶段</p>
+              <p className={`mt-3 data-value text-xl ${strongestPerformancePoint.netResult >= 0 ? 'text-positive' : 'text-negative'}`}>
+                {strongestPerformancePoint.label}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                差额 {formatSignedMoney(strongestPerformancePoint.netResult)}，平均每期投入 {formatMoney(averagePeriodAmount)}。
+              </p>
+            </div>
+          </div>
+
+          <div className="dashboard-trajectory-plot">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trajectoryData}>
+              <AreaChart
+                data={performanceData}
+                margin={{ top: 18, right: 12, left: 0, bottom: 0 }}
+              >
                 <defs>
                   <linearGradient id="trajectoryGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#7aa2ff" stopOpacity={0.24} />
-                    <stop offset="100%" stopColor="#7aa2ff" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="#7aa2ff" stopOpacity={0.26} />
+                    <stop offset="100%" stopColor="#7aa2ff" stopOpacity={0.03} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.045)" />
-                <XAxis dataKey="label" tick={chartTickStyle} tickLine={false} axisLine={false} />
-                <YAxis tick={chartTickStyle} tickLine={false} axisLine={false} width={72} />
+                <XAxis
+                  dataKey="label"
+                  tick={chartTickStyle}
+                  tickLine={false}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
+                  height={34}
+                  tickMargin={10}
+                />
+                <YAxis
+                  tick={chartTickStyle}
+                  tickLine={false}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
+                  width={66}
+                  tickMargin={10}
+                  tickFormatter={(value) => formatCompactMoney(value)}
+                />
                 <Tooltip
                   contentStyle={chartTooltipStyle}
                   labelStyle={{ color: '#eef3f9', fontWeight: 600 }}
                   itemStyle={{ color: '#d7dfeb' }}
                   cursor={{ stroke: 'rgba(255,255,255,0.08)', strokeWidth: 1 }}
-                  formatter={(value) => formatMoney(value)}
+                  formatter={(value, name, item) => {
+                    const label = name === 'marketValue' ? '组合市值' : '累计投入'
+                    const delta = Number(item.payload.marketValue || 0) - Number(item.payload.cumulativeInvested || 0)
+                    return [formatMoney(value), `${label}${name === 'marketValue' ? ` · 差额 ${formatSignedMoney(delta)}` : ''}`]
+                  }}
                 />
                 <Area
                   type="monotone"
-                  dataKey="actualValue"
+                  dataKey="marketValue"
                   stroke="#7aa2ff"
                   fill="url(#trajectoryGradient)"
-                  strokeWidth={2.35}
-                  name="实际持仓价值"
+                  strokeWidth={2.4}
+                  name="marketValue"
                 />
                 <Line
                   type="monotone"
-                  dataKey="targetValue"
-                  stroke="#dbe8fd"
-                  strokeWidth={1.7}
-                  strokeDasharray="6 6"
+                  dataKey="cumulativeInvested"
+                  stroke="#e9eefb"
+                  strokeWidth={1.8}
+                  strokeDasharray="5 5"
                   dot={false}
-                  name="目标轨迹"
+                  name="cumulativeInvested"
                 />
               </AreaChart>
             </ResponsiveContainer>

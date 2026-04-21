@@ -27,6 +27,11 @@ const frequencyOptions = [
 ]
 
 const OPEN_ENDED_PLACEHOLDER_PERIODS = 9999
+const MAX_RESERVE_RATIO = 0.3
+
+function clampReserveRatio(value) {
+  return Math.min(MAX_RESERVE_RATIO, Math.max(0, Number(value) || 0))
+}
 
 function createDraftPlan() {
   return {
@@ -61,6 +66,7 @@ function normalizeFormPlan(source) {
     ...createDraftPlan(),
     ...base,
     budgetMode,
+    reserveRatio: budgetMode === 'open-ended' ? 0 : clampReserveRatio(base.reserveRatio),
     periodicTarget: hasPeriodicTarget ? formatNumericInput(base.periodicTarget) : '',
     totalBudget: hasTotalBudget ? formatNumericInput(base.totalBudget) : '',
     totalPeriods: budgetMode === 'open-ended'
@@ -145,7 +151,8 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
   const totalBudgetValue = Number(form.totalBudget) || 0
   const totalPeriodsValue = Number(form.totalPeriods) || 0
   const periodicTargetValue = Number(form.periodicTarget) || 0
-  const reservedCash = totalBudgetValue * (Number(form.reserveRatio) || 0)
+  const reserveRatioValue = clampReserveRatio(form.reserveRatio)
+  const reservedCash = totalBudgetValue * reserveRatioValue
   const deployableCash = totalBudgetValue - reservedCash
   const isWeightValid = form.assets.length > 0 && Math.abs(totalWeight - 1) < 0.001
   const hasValidBudget = isOpenEnded ? periodicTargetValue >= 0 : totalBudgetValue > 0 && totalPeriodsValue > 0
@@ -157,6 +164,8 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
         ? normalizeNumericInput(value)
         : key === 'totalPeriods'
           ? normalizeNumericInput(value, { integerOnly: true })
+          : key === 'reserveRatio'
+            ? clampReserveRatio(value)
           : value
       const next = {
         ...current,
@@ -259,7 +268,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
       name: form.name.trim(),
       budgetMode: isOpenEnded ? 'open-ended' : 'fixed',
       totalBudget: isOpenEnded ? 0 : totalBudgetValue,
-      reserveRatio: isOpenEnded ? 0 : (Number(form.reserveRatio) || 0.2),
+      reserveRatio: isOpenEnded ? 0 : clampReserveRatio(form.reserveRatio || 0.2),
       totalPeriods: isOpenEnded
         ? Math.max(totalPeriodsValue || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)
         : totalPeriodsValue,
@@ -456,14 +465,14 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
               <div className="mt-4 subtle-panel p-4">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-sm text-muted-foreground">保留现金比例</span>
-                  <span className="data-value">{Math.round((Number(form.reserveRatio) || 0) * 100)}%</span>
+                  <span className="data-value">{Math.round(reserveRatioValue * 100)}%</span>
                 </div>
                 <input
                   type="range"
-                  min="0.1"
+                  min="0"
                   max="0.3"
                   step="0.01"
-                  value={form.reserveRatio}
+                  value={reserveRatioValue}
                   onChange={(event) => updateField('reserveRatio', Number(event.target.value))}
                   className="mt-4 w-full accent-blue-400"
                 />

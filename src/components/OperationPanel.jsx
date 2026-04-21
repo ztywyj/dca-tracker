@@ -351,8 +351,8 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                     />
                   </div>
                   <div className="mt-4 subtle-row operation-footer-row">
-                    <span className="text-sm text-muted-foreground">实际投入金额</span>
-                    <span className="operation-metric-value operation-footer-value">{formatMoney(asset.actualAmount)}</span>
+                    <span className="operation-footer-label">实际投入金额</span>
+                    <span className="operation-footer-value">{formatMoney(asset.actualAmount)}</span>
                   </div>
                 </div>
               </div>
