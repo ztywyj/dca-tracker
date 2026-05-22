@@ -5,6 +5,7 @@ import { calcAllTargets, getRequiredInvestment, getSuggestedShares as getVaSugge
 import { usePlan } from './hooks/usePlan'
 import { useRecords } from './hooks/useRecords'
 import { clearAll } from './utils/storage'
+import { getRemainingDeployableBudget } from './utils/budget'
 
 const Dashboard = lazy(() => import('./components/Dashboard'))
 const History = lazy(() => import('./components/History'))
@@ -51,7 +52,41 @@ function normalizeRecordAssets(record) {
   }
 }
 
-function rebuildPlanState(plan, records) {
+function getRecordedSharesMap(records, planId) {
+  const sharesMap = new Map()
+  const safeRecords = Array.isArray(records) ? records : []
+
+  safeRecords
+    .filter((record) => record.planId === planId)
+    .forEach((record) => {
+      const assets = Array.isArray(record.assets) ? record.assets : []
+
+      assets.forEach((asset) => {
+        const ticker = asset.ticker
+        if (!ticker) return
+        sharesMap.set(ticker, roundToTwo((sharesMap.get(ticker) || 0) + (Number(asset.actualShares) || 0)))
+      })
+    })
+
+  return sharesMap
+}
+
+function getInitialSharesMap(plan, sourceRecords) {
+  const recordedSharesMap = getRecordedSharesMap(sourceRecords, plan.id)
+
+  return new Map(plan.assets.map((asset) => {
+    const currentShares = Number(asset.currentShares) || 0
+    const recordedShares = Number(recordedSharesMap.get(asset.ticker)) || 0
+    const fallbackInitialShares = Number(asset.initialShares) || 0
+    const initialShares = recordedShares > 0
+      ? currentShares - recordedShares
+      : currentShares || fallbackInitialShares
+
+    return [asset.ticker, roundToTwo(initialShares)]
+  }))
+}
+
+export function rebuildPlanState(plan, records, sourceRecords = records) {
   if (!plan) {
     return {
       nextPlan: null,
@@ -66,7 +101,8 @@ function rebuildPlanState(plan, records) {
     .sort((left, right) => left.periodIndex - right.periodIndex)
 
   const otherRecords = (Array.isArray(records) ? records : []).filter((record) => record.planId !== plan.id)
-  const assetSharesMap = new Map(plan.assets.map((asset) => [asset.ticker, 0]))
+  const initialSharesMap = getInitialSharesMap(plan, sourceRecords)
+  const assetSharesMap = new Map(plan.assets.map((asset) => [asset.ticker, initialSharesMap.get(asset.ticker) || 0]))
   let cumulativeInvested = 0
 
   const rebuiltPlanRecords = planRecords.map((record, index) => {
@@ -106,9 +142,7 @@ function rebuildPlanState(plan, records) {
 
     const totalActualAmount = roundToTwo(nextAssets.reduce((sum, asset) => sum + (Number(asset.actualAmount) || 0), 0))
     cumulativeInvested = roundToTwo(cumulativeInvested + totalActualAmount)
-    const remainingBudget = plan.budgetMode === 'open-ended'
-      ? 0
-      : roundToTwo((Number(plan.totalBudget) || 0) - cumulativeInvested)
+    const remainingBudget = getRemainingDeployableBudget(plan, cumulativeInvested)
 
     return {
       ...normalizedRecord,
@@ -125,6 +159,7 @@ function rebuildPlanState(plan, records) {
     currentPeriod: rebuiltPlanRecords.length,
     assets: plan.assets.map((asset) => ({
       ...asset,
+      initialShares: roundToTwo(initialSharesMap.get(asset.ticker) || 0),
       currentShares: roundToTwo(assetSharesMap.get(asset.ticker) || 0),
     })),
   }
@@ -144,14 +179,14 @@ function rebuildPlanState(plan, records) {
 
 function rebuildStateAfterRecordDeletion(plan, records, recordId) {
   const remainingRecords = (Array.isArray(records) ? records : []).filter((record) => record.id !== recordId)
-  return rebuildPlanState(plan, remainingRecords)
+  return rebuildPlanState(plan, remainingRecords, records)
 }
 
 function rebuildStateAfterRecordEdit(plan, records, updatedRecord) {
   const nextRecords = (Array.isArray(records) ? records : []).map((record) =>
     record.id === updatedRecord.id ? { ...record, ...updatedRecord } : record,
   )
-  return rebuildPlanState(plan, nextRecords)
+  return rebuildPlanState(plan, nextRecords, records)
 }
 
 export default function App() {

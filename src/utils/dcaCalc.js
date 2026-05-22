@@ -1,13 +1,7 @@
-const DEFAULT_RESERVE_RATIO = 0.2
+import { getDeployableBudget } from './budget'
 
 function roundToTwo(value) {
   return Number((Number(value) || 0).toFixed(2))
-}
-
-function getDeployableBudget(plan = {}) {
-  const totalBudget = Number(plan.totalBudget) || 0
-  const reserveRatio = Number.isFinite(Number(plan.reserveRatio)) ? Number(plan.reserveRatio) : DEFAULT_RESERVE_RATIO
-  return totalBudget * (1 - reserveRatio)
 }
 
 export function getPeriodicAmount(plan = {}, assetWeight = 0) {

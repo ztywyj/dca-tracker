@@ -200,6 +200,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
           name: assetDraft.name.trim() || assetDraft.ticker.trim().toUpperCase(),
           weight: Number(assetDraft.weight) || 0,
           currentShares: Number(assetDraft.currentShares) || 0,
+          initialShares: Number(assetDraft.currentShares) || 0,
         },
       ])
 
@@ -282,6 +283,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
         name: asset.name?.trim() || asset.ticker.trim().toUpperCase(),
         weight: Number(asset.weight) || 0,
         currentShares: Number(asset.currentShares) || 0,
+        initialShares: Number(asset.initialShares ?? asset.currentShares) || 0,
       })),
     }
 

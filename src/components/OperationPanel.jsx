@@ -10,6 +10,7 @@ import {
   getUpdatedShares,
 } from '../utils/vaCalc'
 import { fetchQuote } from '../hooks/useQuote'
+import { getRemainingDeployableBudget } from '../utils/budget'
 
 const decisionOptions = [
   { value: 'normal', label: '正常执行' },
@@ -61,7 +62,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
         price: '',
         priceSource: 'manual',
         loading: false,
-        actualShares: '',
+        actualShares: null,
         fetchError: '',
       })),
     )
@@ -77,10 +78,13 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
     )
   }
 
+  const rawCurrentPeriod = Math.max(Number(plan.currentPeriod) || 0, 0)
+  const totalPeriods = Math.max(1, Number(plan.totalPeriods) || 1)
+  const isPlanComplete = !isOpenEnded && rawCurrentPeriod >= totalPeriods
   const currentPeriod = isOpenEnded
-    ? Math.max(Number(plan.currentPeriod) || 0, 0)
-    : Math.min(Number(plan.currentPeriod) || 0, Math.max(0, (Number(plan.totalPeriods) || 1) - 1))
-  const latestRecord = records.find((record) => record.planId === plan.id && record.periodIndex === currentPeriod - 1)
+    ? rawCurrentPeriod
+    : Math.min(rawCurrentPeriod, totalPeriods - 1)
+  const latestRecord = records.find((record) => record.planId === plan.id && record.periodIndex === rawCurrentPeriod - 1)
 
   const currentAssets = plan.assets.map((asset, index) => {
     const state = assetStates.find((item) => item.ticker === asset.ticker) || {
@@ -88,7 +92,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
       price: '',
       priceSource: 'manual',
       loading: false,
-      actualShares: '',
+      actualShares: null,
       fetchError: '',
     }
 
@@ -107,7 +111,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
     const suggestedShares = plan.strategy === 'VA'
       ? getVaSuggestedShares(requiredAmount, price)
       : getDcaSuggestedShares(requiredAmount, price)
-    const hasManualActualShares = state.actualShares !== ''
+    const hasManualActualShares = state.actualShares !== null && state.actualShares !== undefined
     const actualShares = hasManualActualShares ? roundToTwo(toNumberOrFallback(state.actualShares, 0)) : roundToTwo(suggestedShares)
     const actualAmount = roundToTwo(actualShares * price)
 
@@ -132,9 +136,9 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
     .filter((record) => record.planId === plan.id)
     .reduce((sum, record) => sum + (Number(record.totalActualAmount) || 0), 0)
   const cumulativeInvested = roundToTwo(historicalInvested + totalActualAmount)
-  const remainingBudget = isOpenEnded ? 0 : roundToTwo((Number(plan.totalBudget) || 0) - cumulativeInvested)
+  const remainingBudget = getRemainingDeployableBudget(plan, cumulativeInvested)
   const pricingReadyCount = currentAssets.filter((asset) => !asset.loading && toNumberOrFallback(asset.price, 0) > 0).length
-  const isReadyToConfirm = currentAssets.length > 0 && currentAssets.every((asset) => !asset.loading && toNumberOrFallback(asset.price, 0) > 0)
+  const isReadyToConfirm = !isPlanComplete && currentAssets.length > 0 && currentAssets.every((asset) => !asset.loading && toNumberOrFallback(asset.price, 0) > 0)
 
   const updateAssetState = (ticker, patch) => {
     setAssetStates((current) =>
@@ -164,6 +168,10 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
   }
 
   const handleConfirm = () => {
+    if (!isReadyToConfirm) {
+      return
+    }
+
     const record = {
       id: `record-${Date.now()}`,
       planId: plan.id,
@@ -210,7 +218,11 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
           <div className="min-w-0">
             <p className="label">Execution Workspace</p>
             <h2 className="section-title">
-              {isOpenEnded ? `第 ${currentPeriod + 1} 期 · 长期执行中` : `第 ${currentPeriod + 1} 期 / 共 ${plan.totalPeriods} 期`}
+              {isOpenEnded
+                ? `第 ${currentPeriod + 1} 期 · 长期执行中`
+                : isPlanComplete
+                  ? `已完成 ${totalPeriods} / ${totalPeriods} 期`
+                  : `第 ${currentPeriod + 1} 期 / 共 ${totalPeriods} 期`}
             </h2>
             <p className="muted-copy mt-3 max-w-2xl">
               先确认价格来源，再写入实际股数。页面会用统一的控制台视图展示目标、建议与最终执行金额。
@@ -339,7 +351,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                         }
                       }}
                       onBlur={() => {
-                        if (asset.actualSharesInput === '') {
+                        if (asset.actualSharesInput === null || asset.actualSharesInput === undefined || asset.actualSharesInput === '') {
                           return
                         }
 
@@ -436,7 +448,11 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
           ) : null}
         </div>
 
-        {!isReadyToConfirm ? (
+        {isPlanComplete ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            固定期数计划已完成。如需继续执行，请先到设置页增加总期数或新建计划。
+          </p>
+        ) : !isReadyToConfirm ? (
           <p className="mt-4 text-sm text-muted-foreground">
             先为全部标的填入价格，并等待自动获取完成后，再确认写入历史。
           </p>

@@ -1,4 +1,5 @@
-const DEFAULT_RESERVE_RATIO = 0.2
+import { getDeployableBudget } from './budget'
+
 const OPEN_ENDED_PLACEHOLDER_PERIODS = 9999
 
 function roundToTwo(value) {
@@ -15,16 +16,6 @@ function isOpenEndedPlan(plan = {}) {
 
 function getPeriodicGrowthRate(plan = {}) {
   return (Number(plan.targetAnnualReturn) || 0) / getPeriodsPerYear(plan.frequency)
-}
-
-function getDeployableBudget(plan = {}) {
-  const totalBudget = Number(plan.totalBudget) || 0
-  const reserveRatio = Number.isFinite(Number(plan.reserveRatio)) ? Number(plan.reserveRatio) : DEFAULT_RESERVE_RATIO
-  return totalBudget * (1 - reserveRatio)
-}
-
-function getAssetCount(plan = {}) {
-  return Array.isArray(plan.assets) ? plan.assets.length : 0
 }
 
 function getAssetPeriodicContribution(assetWeight, plan = {}) {
