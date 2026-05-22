@@ -5,3 +5,8 @@ dist
 !.env.example
 *.log
 .vite-*.log
+*.zip
+config.toml
+.impeccable.md
+.cursor/skills/
+.DS_Store
