@@ -14,6 +14,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { getDeployableBudget, getRemainingDeployableBudget } from '../utils/budget'
 
 const PIE_COLORS = ['#8ea9ff', '#51d0bf', '#f2b36f', '#c98bff', '#ff8f9d', '#7e90ff']
 
@@ -225,13 +226,14 @@ export default function Dashboard({ plan, records, onNavigate }) {
     0,
   )
   const totalInvested = Number(latestRecord.cumulativeInvested) || 0
-  const remainingBudget = Number(latestRecord.remainingBudget) || 0
   const floatingProfit = marketValue - totalInvested
   const floatingProfitPct = totalInvested > 0 ? (floatingProfit / totalInvested) * 100 : 0
-  const deployableBudget = (Number(plan.totalBudget) || 0) * (1 - (Number(plan.reserveRatio) || 0))
-  const reserveFloor = (Number(plan.totalBudget) || 0) * (Number(plan.reserveRatio) || 0)
+  const totalBudget = Number(plan.totalBudget) || 0
+  const deployableBudget = getDeployableBudget(plan)
+  const remainingBudget = Math.max(0, getRemainingDeployableBudget(plan, totalInvested))
+  const reserveFloor = Math.max(0, totalBudget - deployableBudget)
   const progressRatio = deployableBudget > 0 ? Math.min(totalInvested / deployableBudget, 1) : 0
-  const drawableBudget = Math.max(0, deployableBudget - totalInvested)
+  const drawableBudget = remainingBudget
 
   const performanceData = planRecords.map((record) => {
     const marketValueAtClose = record.assets.reduce(

@@ -308,7 +308,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
         return
       }
 
-      const confirmed = window.confirm('导入将覆盖当前所有数据，确认继续？')
+      const confirmed = window.confirm('导入备份将覆盖当前所有计划和历史记录，确认继续？')
       if (!confirmed) {
         return
       }
@@ -361,7 +361,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
               className="control-button"
             >
               <Download size={16} />
-              导出 JSON
+              导出备份
             </button>
             <button
               type="button"
@@ -369,7 +369,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
               className="control-button"
             >
               <FileUp size={16} />
-              导入 JSON
+              导入备份
             </button>
             <input
               ref={fileInputRef}
@@ -450,7 +450,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                         <p className="mt-3 data-value text-xl">{formatMoney(record.cumulativeInvested)}</p>
                       </div>
                       <div className="subtle-panel p-4">
-                        <p className="mini-kicker">{isOpenEnded ? '标的数量' : '剩余预算'}</p>
+                        <p className="mini-kicker">{isOpenEnded ? '标的数量' : '当期剩余可投'}</p>
                         <p className="mt-3 data-value text-xl">
                           {isOpenEnded ? record.assets.length : formatMoney(record.remainingBudget)}
                         </p>
@@ -477,7 +477,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                       className="control-button-positive"
                     >
                       <Pencil size={16} />
-                      编辑
+                      编辑记录
                     </button>
                     <button
                       type="button"
@@ -594,7 +594,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                         onClick={() => handleSaveEdit(record)}
                         className="control-button-primary"
                       >
-                        保存
+                        保存记录
                       </button>
                     </div>
                   </div>

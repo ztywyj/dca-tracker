@@ -445,7 +445,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
           </div>
           {!isOpenEnded ? (
             <div className="surface-stat">
-              <p className="mini-kicker">剩余预算</p>
+              <p className="mini-kicker">剩余可投</p>
               <p className="mt-3 data-value text-xl">{formatMoney(remainingBudget)}</p>
             </div>
           ) : null}
@@ -453,7 +453,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
 
         {isPlanComplete ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            固定期数计划已完成。如需继续执行，请先到设置页增加总期数或新建计划。
+            固定期数计划已完成。如需继续执行，请先到设置页增加总期数或填写新计划。
           </p>
         ) : !isReadyToConfirm ? (
           <p className="mt-4 text-sm text-muted-foreground">

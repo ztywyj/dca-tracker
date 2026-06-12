@@ -341,14 +341,14 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
                 onClick={() => setForm(normalizeFormPlan(plan))}
                 className="control-button"
               >
-                修改计划
+                撤销修改
               </button>
               <button
                 type="button"
                 onClick={handleCreateNew}
                 className="control-button"
               >
-                新建计划
+                填写新计划
               </button>
             </div>
           ) : null}
@@ -706,7 +706,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
 
             <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${isWeightValid ? 'border-positive/30 bg-positive/10 text-emerald-300' : 'border-warning/30 bg-warning/10 text-amber-200'}`}>
               当前总权重：<span className="data-value">{Math.round(totalWeight * 100)}%</span>
-              {!isWeightValid ? '，请调整到 100% 后才能保存。' : '，可以保存计划。'}
+              {!isWeightValid ? '，请调整到 100% 后才能保存。' : '，可以保存当前计划。'}
             </div>
           </div>
         </div>
@@ -797,7 +797,7 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
             className="control-button-primary w-full disabled:cursor-not-allowed disabled:border-white/[0.05] disabled:bg-white/[0.02] disabled:text-muted"
           >
             <Save size={18} />
-            保存计划
+            保存当前计划
           </button>
 
           <button
