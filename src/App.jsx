@@ -197,7 +197,9 @@ export default function App() {
   const Screen = useMemo(() => tabs[activeTab], [activeTab])
 
   const handleSavePlan = (nextPlan) => {
-    replacePlan(nextPlan)
+    const { nextPlan: rebuiltPlan, nextRecords } = rebuildPlanState(nextPlan, records)
+    replaceRecords(nextRecords)
+    replacePlan(rebuiltPlan)
     setActiveTab('dashboard')
   }
 

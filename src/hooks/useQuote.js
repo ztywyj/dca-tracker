@@ -13,7 +13,7 @@ function getReadableErrorMessage(data, error) {
     return '未配置 Twelve Data API Key，请检查 .env 或部署环境变量。'
   }
 
-  if (error?.name === 'TimeoutError') {
+  if (error?.name === 'AbortError' || error?.name === 'TimeoutError') {
     return '请求超时，请稍后重试或手动输入。'
   }
 
@@ -38,6 +38,18 @@ function getReadableErrorMessage(data, error) {
   return '获取失败，请手动输入。'
 }
 
+function createTimeoutSignal(timeoutMs = 5000) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    controller.abort()
+  }, timeoutMs)
+
+  return {
+    signal: controller.signal,
+    clear: () => clearTimeout(timeoutId),
+  }
+}
+
 export async function fetchQuote(ticker) {
   const symbol = String(ticker || '').trim().toUpperCase()
   if (!symbol) {
@@ -56,8 +68,10 @@ export async function fetchQuote(ticker) {
 
   const url = `${API_BASE_URL}?symbol=${encodeURIComponent(symbol)}&apikey=${API_KEY}`
 
+  let timeout
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+    timeout = createTimeoutSignal()
+    const res = await fetch(url, { signal: timeout.signal })
     const data = await res.json()
     const roundedPrice = roundQuotePrice(data?.price)
 
@@ -78,6 +92,8 @@ export async function fetchQuote(ticker) {
       price: null,
       error: getReadableErrorMessage(null, error),
     }
+  } finally {
+    timeout?.clear()
   }
 }
 

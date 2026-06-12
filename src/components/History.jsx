@@ -46,6 +46,10 @@ function roundToTwo(value) {
   return Number((Number(value) || 0).toFixed(2))
 }
 
+function isZeroShareAsset(asset) {
+  return roundToTwo(asset?.actualShares) === 0
+}
+
 function downloadFile(filename, content, type) {
   const blob = new Blob([content], { type })
   const url = URL.createObjectURL(blob)
@@ -111,6 +115,17 @@ function createEditDraft(record) {
       price: formatNumericInput(asset.price),
       actualShares: formatNumericInput(asset.actualShares),
     })),
+  }
+}
+
+function buildRecordWithAssets(record, assets, overrides = {}) {
+  const totalActualAmount = roundToTwo(assets.reduce((sum, asset) => sum + (Number(asset.actualAmount) || 0), 0))
+
+  return {
+    ...record,
+    ...overrides,
+    assets,
+    totalActualAmount,
   }
 }
 
@@ -217,13 +232,9 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
     }))
   }
 
-  const handleSaveEdit = (record) => {
-    if (!editDraft) {
-      return
-    }
-
+  const buildEditedRecord = (record, draft) => {
     const nextAssets = record.assets.map((asset) => {
-      const patch = editDraft.assets.find((item) => item.ticker === asset.ticker)
+      const patch = draft.assets.find((item) => item.ticker === asset.ticker)
       const price = roundToTwo(toNumberOrFallback(patch?.price, asset.price))
       const actualShares = roundToTwo(toNumberOrFallback(patch?.actualShares, 0))
       return {
@@ -234,16 +245,43 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
       }
     })
 
-    const totalActualAmount = roundToTwo(nextAssets.reduce((sum, asset) => sum + (Number(asset.actualAmount) || 0), 0))
-
-    onEditRecord?.({
-      ...record,
-      tag: editDraft.tag,
-      note: editDraft.note,
-      assets: nextAssets,
-      totalActualAmount,
+    return buildRecordWithAssets(record, nextAssets, {
+      tag: draft.tag,
+      note: draft.note,
     })
+  }
 
+  const handleSaveEdit = (record) => {
+    if (!editDraft) {
+      return
+    }
+
+    onEditRecord?.(buildEditedRecord(record, editDraft))
+
+    setEditingId('')
+    setEditDraft(null)
+  }
+
+  const handleDeleteAsset = (record, asset) => {
+    if (record.assets.length <= 1) {
+      return
+    }
+
+    const sourceRecord = editingId === record.id && editDraft ? buildEditedRecord(record, editDraft) : record
+    const sourceAsset = sourceRecord.assets.find((item) => item.ticker === asset.ticker)
+
+    if (!isZeroShareAsset(sourceAsset)) {
+      return
+    }
+
+    const confirmed = window.confirm(`确认从第${record.periodIndex + 1}期删除 ${asset.ticker}？此操作只会删除该期的这个标的。`)
+    if (!confirmed) {
+      return
+    }
+
+    const nextAssets = sourceRecord.assets.filter((item) => item.ticker !== asset.ticker)
+
+    onEditRecord?.(buildRecordWithAssets(sourceRecord, nextAssets))
     setEditingId('')
     setEditDraft(null)
   }
@@ -465,7 +503,19 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                           <div key={asset.ticker} className="subtle-panel p-4">
                             <div className="flex items-center justify-between gap-3">
                               <p className="data-value text-base">{asset.ticker}</p>
-                              <span className="mini-kicker">{asset.priceSource === 'auto' ? '自动价格' : '手动价格'}</span>
+                              <div className="flex flex-wrap items-center justify-end gap-2">
+                                <span className="mini-kicker">{asset.priceSource === 'auto' ? '自动价格' : '手动价格'}</span>
+                                {isZeroShareAsset(draftAsset) && record.assets.length > 1 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteAsset(record, asset)}
+                                    className="control-button-danger px-3 py-2 text-xs"
+                                  >
+                                    <Trash2 size={14} />
+                                    删除该标的
+                                  </button>
+                                ) : null}
+                              </div>
                             </div>
                             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                               <label className="space-y-2">
@@ -565,6 +615,16 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                               <p className="text-sm text-muted-foreground">
                                 目标值 <span className="data-subtle">{formatMoney(asset.targetValue)}</span>
                               </p>
+                              {isZeroShareAsset(asset) && record.assets.length > 1 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteAsset(record, asset)}
+                                  className="control-button-danger justify-self-end px-3 py-2 text-xs"
+                                >
+                                  <Trash2 size={14} />
+                                  删除该标的
+                                </button>
+                              ) : null}
                             </div>
                           </div>
 

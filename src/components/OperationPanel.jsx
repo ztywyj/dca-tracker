@@ -333,6 +333,9 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                       {asset.loading ? '获取中...' : '自动获取价格'}
                     </button>
                   </div>
+                  {asset.fetchError ? (
+                    <p className="mt-3 text-xs leading-5 text-negative">{asset.fetchError}</p>
+                  ) : null}
                 </div>
 
                 <div className="subtle-panel flex h-full flex-col p-4">

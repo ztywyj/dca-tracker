@@ -63,4 +63,63 @@ describe('rebuildPlanState', () => {
     expect(nextPlan.currentPeriod).toBe(1)
     expect(nextRecords[0].remainingBudget).toBe(7800)
   })
+
+  it('recalculates remaining budget when fixed plan budget settings change', () => {
+    const updatedPlan = {
+      ...plan,
+      totalBudget: 20000,
+      reserveRatio: 0.2,
+    }
+
+    const staleRecord = {
+      ...firstRecord,
+      cumulativeInvested: 200,
+      remainingBudget: 7800,
+    }
+
+    const { nextRecords } = rebuildPlanState(updatedPlan, [staleRecord])
+
+    expect(nextRecords[0].remainingBudget).toBe(15800)
+  })
+
+  it('rebuilds state when one zero-share asset is removed from a record', () => {
+    const multiAssetPlan = {
+      ...plan,
+      currentPeriod: 1,
+      assets: [
+        {
+          ticker: 'QLD',
+          name: 'QLD',
+          weight: 0.5,
+          currentShares: 12,
+        },
+        {
+          ticker: 'IBIT',
+          name: 'IBIT',
+          weight: 0.5,
+          currentShares: 5,
+        },
+      ],
+    }
+
+    const editedRecord = {
+      ...firstRecord,
+      assets: [
+        {
+          ticker: 'QLD',
+          price: 100,
+          actualShares: 2,
+          actualAmount: 200,
+        },
+      ],
+    }
+
+    const { nextPlan, nextRecords } = rebuildPlanState(multiAssetPlan, [editedRecord], [editedRecord])
+
+    expect(nextPlan.currentPeriod).toBe(1)
+    expect(nextPlan.assets.find((asset) => asset.ticker === 'QLD').currentShares).toBe(12)
+    expect(nextPlan.assets.find((asset) => asset.ticker === 'IBIT').currentShares).toBe(5)
+    expect(nextRecords[0].assets).toHaveLength(1)
+    expect(nextRecords[0].totalActualAmount).toBe(200)
+  })
 })
