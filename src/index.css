@@ -133,6 +133,38 @@ select {
     backdrop-filter: blur(22px);
   }
 
+  .topbar-content,
+  .topbar-row,
+  .topbar-label,
+  .topbar-title,
+  .topbar-plan,
+  .topbar-plan-label,
+  .topbar-select,
+  .tab-bar-shell,
+  .tab-bar-shell > div,
+  .tab-bar-button,
+  .tab-bar-icon,
+  .tab-bar-label {
+    transition:
+      border-radius 220ms ease,
+      color 220ms ease,
+      gap 220ms ease,
+      height 220ms ease,
+      margin 220ms ease,
+      max-height 220ms ease,
+      min-height 220ms ease,
+      opacity 180ms ease,
+      padding 220ms ease,
+      transform 220ms ease;
+  }
+
+  .topbar-label,
+  .topbar-plan-label,
+  .tab-bar-label {
+    max-height: 1.5rem;
+    overflow: hidden;
+  }
+
   .topbar-select {
     @apply rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition;
   }
@@ -493,5 +525,80 @@ select {
     flex: 1;
     min-height: 24rem;
     margin: 1.25rem -0.45rem -0.6rem -0.8rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .app-shell[data-chrome-compact='true'] .topbar-content {
+    gap: 0.65rem;
+    padding-bottom: 0.7rem;
+    padding-top: 0.7rem;
+  }
+
+  .app-shell[data-chrome-compact='true'] .topbar-row {
+    gap: 0.65rem;
+  }
+
+  .app-shell[data-chrome-compact='true'] .topbar-brand {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .app-shell[data-chrome-compact='true'] .topbar-label {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateY(-0.25rem);
+  }
+
+  .app-shell[data-chrome-compact='true'] .topbar-title {
+    font-size: 1.05rem;
+    line-height: 1.2;
+    margin-top: 0;
+  }
+
+  .app-shell[data-chrome-compact='true'] .topbar-plan {
+    gap: 0.35rem;
+  }
+
+  .app-shell[data-chrome-compact='true'] .topbar-plan-label {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateY(-0.25rem);
+  }
+
+  .app-shell[data-chrome-compact='true'] .topbar-select {
+    border-radius: 1rem;
+    padding-bottom: 0.65rem;
+    padding-top: 0.65rem;
+  }
+
+  .app-shell[data-chrome-compact='true'] .tab-bar-shell {
+    min-height: 46px;
+  }
+
+  .app-shell[data-chrome-compact='true'] .tab-bar-shell > div {
+    height: 46px;
+  }
+
+  .app-shell[data-chrome-compact='true'] .tab-bar-button {
+    border-radius: 1rem;
+    gap: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .app-shell[data-chrome-compact='true'] .tab-bar-icon {
+    transform: translateY(0.15rem) scale(1.05);
+  }
+
+  .app-shell[data-chrome-compact='true'] .tab-bar-label {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateY(0.25rem);
   }
 }
