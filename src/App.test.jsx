@@ -19,6 +19,7 @@ describe('rebuildPlanState', () => {
         name: 'QLD',
         weight: 1,
         currentShares: 13,
+        initialAverageCost: 80,
       },
     ],
   }
@@ -59,6 +60,7 @@ describe('rebuildPlanState', () => {
     const { nextPlan, nextRecords } = rebuildPlanState(plan, [firstRecord], [firstRecord, secondRecord])
 
     expect(nextPlan.assets[0].initialShares).toBe(10)
+    expect(nextPlan.assets[0].initialAverageCost).toBe(80)
     expect(nextPlan.assets[0].currentShares).toBe(12)
     expect(nextPlan.currentPeriod).toBe(1)
     expect(nextRecords[0].remainingBudget).toBe(7800)
