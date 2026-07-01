@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { BarChart3, History as HistoryIcon, PanelsTopLeft, Settings as SettingsIcon, WalletCards } from 'lucide-react'
 
 const navItems = [
@@ -17,33 +18,72 @@ export default function Layout({
   onChangeActivePlan,
 }) {
   const hasPlans = Array.isArray(plans) && plans.length > 0
+  const scrollAreaRef = useRef(null)
+  const lastScrollTopRef = useRef(0)
+  const frameRef = useRef(0)
+  const [isChromeCompact, setIsChromeCompact] = useState(false)
+
+  const handleScroll = () => {
+    if (frameRef.current) return
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = 0
+
+      const nextScrollTop = scrollAreaRef.current?.scrollTop || 0
+      const lastScrollTop = lastScrollTopRef.current
+      const delta = nextScrollTop - lastScrollTop
+
+      if (nextScrollTop <= 16) {
+        setIsChromeCompact(false)
+      } else if (delta > 8 && nextScrollTop > 40) {
+        setIsChromeCompact(true)
+      } else if (delta < -8) {
+        setIsChromeCompact(false)
+      }
+
+      lastScrollTopRef.current = nextScrollTop
+    })
+  }
+
+  useEffect(() => {
+    setIsChromeCompact(false)
+    lastScrollTopRef.current = scrollAreaRef.current?.scrollTop || 0
+  }, [activeTab])
+
+  useEffect(() => () => {
+    if (frameRef.current) {
+      window.cancelAnimationFrame(frameRef.current)
+    }
+  }, [])
 
   return (
-    <div id="root-layout" className="app-shell bg-radial text-white">
-      <div className="app-scroll-area">
+    <div id="root-layout" className="app-shell bg-radial text-white" data-chrome-compact={isChromeCompact ? 'true' : 'false'}>
+      <div ref={scrollAreaRef} className="app-scroll-area" onScroll={handleScroll}>
         <header className="topbar-shell sticky top-0 z-40 border-b border-white/[0.06]">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
-            <p className="min-w-0 truncate text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:text-sm">
-              个人定投面板
-            </p>
+          <div className="topbar-content mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
+            <div className="topbar-row flex items-center justify-between gap-3">
+              <p className="topbar-label min-w-0 truncate text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:text-sm">
+                个人定投面板
+              </p>
 
-            {hasPlans ? (
-              <div className="flex min-w-0 max-w-[72vw] items-center sm:max-w-[24rem]">
-                <select
-                  id="active-plan-select"
-                  aria-label="切换当前计划"
-                  value={activePlanId}
-                  onChange={(event) => onChangeActivePlan?.(event.target.value)}
-                  className="topbar-select min-w-0 flex-1 px-3 py-2 text-sm sm:px-4 sm:py-3"
-                >
-                  {plans.map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.name || '未命名计划'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
+              {hasPlans ? (
+                <div className="topbar-plan flex min-w-0 max-w-[72vw] items-center sm:max-w-[24rem]">
+                  <select
+                    id="active-plan-select"
+                    aria-label="切换当前计划"
+                    value={activePlanId}
+                    onChange={(event) => onChangeActivePlan?.(event.target.value)}
+                    className="topbar-select min-w-0 flex-1 px-3 py-2 text-sm sm:px-4 sm:py-3"
+                  >
+                    {plans.map((plan) => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name || '未命名计划'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
 
@@ -63,12 +103,12 @@ export default function Layout({
                 key={item.key}
                 type="button"
                 onClick={() => onChangeTab(item.key)}
-                className={`flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 transition sm:px-3 ${
+                className={`tab-bar-button flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 transition sm:px-3 ${
                   active ? 'border border-accent/18 bg-accent/10 text-slate-100 shadow-none' : 'border border-transparent text-muted hover:border-line/80 hover:bg-elevated/70 hover:text-white'
                 }`}
               >
-                <Icon size={18} />
-                <span className="text-[11px] font-medium sm:text-xs">{item.label}</span>
+                <Icon className="tab-bar-icon" size={18} />
+                <span className="tab-bar-label text-[11px] font-medium sm:text-xs">{item.label}</span>
               </button>
             )
           })}

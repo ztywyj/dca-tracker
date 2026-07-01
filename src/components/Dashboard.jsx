@@ -16,6 +16,7 @@ import {
 } from 'recharts'
 import { getDeployableBudget, getRemainingDeployableBudget } from '../utils/budget'
 import { getNextSuggestedOperationDate } from '../utils/schedule'
+import { calculateAverageCost, calculatePriceGapPct } from '../utils/portfolioCost'
 
 const PIE_COLORS = ['#8ea9ff', '#51d0bf', '#f2b36f', '#c98bff', '#ff8f9d', '#7e90ff']
 
@@ -61,8 +62,23 @@ function formatCompactMoney(value) {
 }
 
 function formatPercent(value) {
-  const numeric = Number(value) || 0
+  if (value === null || value === undefined || value === '') {
+    return '--'
+  }
+
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) {
+    return '--'
+  }
   return `${numeric >= 0 ? '+' : ''}${numeric.toFixed(2)}%`
+}
+
+function formatOptionalMoney(value) {
+  if (value === null || value === undefined || value === '') {
+    return '--'
+  }
+
+  return Number.isFinite(Number(value)) ? formatMoneyPrecise(value) : '--'
 }
 
 function formatMultiple(value) {
@@ -276,30 +292,14 @@ export default function Dashboard({ plan, records, onNavigate }) {
   }))
 
   const averageCostMap = new Map(
-    plan.assets.map((asset) => {
-      const totalShares = Number(asset.currentShares) || 0
-      const cumulativeCost = planRecords.reduce((sum, record) => {
-        const matchedAsset = record.assets.find((item) => item.ticker === asset.ticker)
-        return sum + (Number(matchedAsset?.actualAmount) || 0)
-      }, 0)
-
-      return [
-        asset.ticker,
-        {
-          shares: totalShares,
-          averageCost: totalShares > 0 ? cumulativeCost / totalShares : 0,
-        },
-      ]
-    }),
+    plan.assets.map((asset) => [asset.ticker, calculateAverageCost(asset, planRecords)]),
   )
 
   const currentWeightData = plan.assets.map((asset, index) => {
     const price = latestPriceMap[asset.ticker] || 0
     const value = (Number(asset.currentShares) || 0) * price
-    const averageCostInfo = averageCostMap.get(asset.ticker) || { shares: 0, averageCost: 0 }
-    const priceGapPct = averageCostInfo.averageCost > 0
-      ? ((price - averageCostInfo.averageCost) / averageCostInfo.averageCost) * 100
-      : 0
+    const averageCostInfo = averageCostMap.get(asset.ticker) || { shares: 0, averageCost: null, hasKnownCost: false }
+    const priceGapPct = calculatePriceGapPct(price, averageCostInfo.averageCost)
     const actualWeight = marketValue > 0 ? Number(((value / marketValue) * 100).toFixed(2)) : 0
     const targetWeight = Number(((Number(asset.weight) || 0) * 100).toFixed(2))
 
@@ -311,6 +311,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
       shares: Number(asset.currentShares) || 0,
       latestPrice: price,
       averageCost: averageCostInfo.averageCost,
+      hasKnownAverageCost: averageCostInfo.hasKnownCost,
       weightGap: Number((actualWeight - targetWeight).toFixed(2)),
       priceGapPct,
       color: PIE_COLORS[index % PIE_COLORS.length],
@@ -770,12 +771,12 @@ export default function Dashboard({ plan, records, onNavigate }) {
                     <p className="mt-1 data-subtle text-xs">{asset.shares} 股</p>
                   </div>
                   <div>
-                    <p className="data-subtle text-sm">{formatMoneyPrecise(asset.averageCost)}</p>
+                    <p className="data-subtle text-sm">{formatOptionalMoney(asset.averageCost)}</p>
                     <p className="mt-1 text-xs text-muted-foreground">仓位 <span className="data-subtle">{asset.actualWeight}%</span></p>
                   </div>
                   <div>
                     <p className="data-subtle text-sm">{formatMoneyPrecise(asset.latestPrice)}</p>
-                    <p className={`mt-1 text-xs ${asset.priceGapPct >= 0 ? 'text-positive' : 'text-negative'}`}>
+                    <p className={`mt-1 text-xs ${asset.priceGapPct === null ? 'text-muted-foreground' : asset.priceGapPct >= 0 ? 'text-positive' : 'text-negative'}`}>
                       {formatPercent(asset.priceGapPct)}
                     </p>
                   </div>

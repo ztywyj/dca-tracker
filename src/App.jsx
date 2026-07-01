@@ -187,6 +187,7 @@ export function rebuildPlanState(plan, records, sourceRecords = records) {
     assets: plan.assets.map((asset) => ({
       ...asset,
       initialShares: roundToTwo(initialSharesMap.get(asset.ticker) || 0),
+      initialAverageCost: Number(asset.initialAverageCost) || 0,
       currentShares: roundToTwo(assetSharesMap.get(asset.ticker) || 0),
     })),
   }

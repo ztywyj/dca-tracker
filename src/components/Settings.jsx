@@ -62,6 +62,7 @@ function normalizeFormPlan(source) {
   const normalizedAssets = [...(source?.assets || [])].map((asset) => ({
     ...asset,
     currentShares: formatNumericInput(asset.currentShares),
+    initialAverageCost: formatNumericInput(asset.initialAverageCost),
   }))
   const base = source ? { ...source, assets: normalizedAssets } : createDraftPlan()
   const budgetMode = base.budgetMode === 'open-ended' ? 'open-ended' : 'fixed'
@@ -91,6 +92,7 @@ function createAssetDraft() {
     name: '',
     weight: 1,
     currentShares: '',
+    initialAverageCost: '',
   }
 }
 
@@ -220,6 +222,7 @@ export default function Settings({
           weight: Number(assetDraft.weight) || 0,
           currentShares: Number(assetDraft.currentShares) || 0,
           initialShares: Number(assetDraft.currentShares) || 0,
+          initialAverageCost: Number(assetDraft.initialAverageCost) || 0,
         },
       ])
 
@@ -268,6 +271,20 @@ export default function Settings({
     }))
   }
 
+  const updateAssetInitialAverageCost = (ticker, initialAverageCost) => {
+    setForm((current) => ({
+      ...current,
+      assets: current.assets.map((asset) =>
+        asset.ticker === ticker
+          ? {
+              ...asset,
+              initialAverageCost,
+            }
+          : asset,
+      ),
+    }))
+  }
+
   const handleEstimateYield = () => {
     const estimation = estimateTargetYield(form.assets)
     updateField('targetAnnualReturn', estimation.estimatedYield)
@@ -304,6 +321,7 @@ export default function Settings({
         weight: Number(asset.weight) || 0,
         currentShares: Number(asset.currentShares) || 0,
         initialShares: Number(asset.initialShares ?? asset.currentShares) || 0,
+        initialAverageCost: Number(asset.initialAverageCost) || 0,
       })),
     }
 
@@ -643,7 +661,7 @@ export default function Settings({
 
             {showAssetForm ? (
               <div className="mt-4 subtle-panel p-4">
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-4">
                   <label className="space-y-2">
                     <span className="text-sm text-muted-foreground">Ticker</span>
                     <input
@@ -673,6 +691,19 @@ export default function Settings({
                       placeholder="0"
                       onChange={(event) => setAssetDraft((current) => ({ ...current, currentShares: normalizeNumericInput(event.target.value) }))}
                       onBlur={() => setAssetDraft((current) => ({ ...current, currentShares: formatNumericInput(current.currentShares) }))}
+                      className="surface-input financial-input"
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="text-sm text-muted-foreground">初始持仓均价</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={assetDraft.initialAverageCost}
+                      placeholder="0"
+                      onChange={(event) => setAssetDraft((current) => ({ ...current, initialAverageCost: normalizeNumericInput(event.target.value) }))}
+                      onBlur={() => setAssetDraft((current) => ({ ...current, initialAverageCost: formatNumericInput(current.initialAverageCost) }))}
                       className="surface-input financial-input"
                     />
                   </label>
@@ -726,7 +757,7 @@ export default function Settings({
                       </button>
                     </div>
 
-                    <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_240px]">
+                    <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_240px_240px]">
                       <div>
                         <div className="flex items-center justify-between gap-4">
                           <span className="text-sm text-muted-foreground">权重</span>
@@ -752,6 +783,19 @@ export default function Settings({
                           placeholder="0"
                           onChange={(event) => updateAssetCurrentShares(asset.ticker, normalizeNumericInput(event.target.value))}
                           onBlur={() => updateAssetCurrentShares(asset.ticker, formatNumericInput(asset.currentShares))}
+                          className="surface-input financial-input"
+                        />
+                      </label>
+
+                      <label className="space-y-2">
+                        <span className="text-sm text-muted-foreground">初始持仓均价</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={asset.initialAverageCost}
+                          placeholder="0"
+                          onChange={(event) => updateAssetInitialAverageCost(asset.ticker, normalizeNumericInput(event.target.value))}
+                          onBlur={() => updateAssetInitialAverageCost(asset.ticker, formatNumericInput(asset.initialAverageCost))}
                           className="surface-input financial-input"
                         />
                       </label>
