@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rebuildPlanState } from './App'
+import { getImportState, rebuildPlanState, removePlanData } from './App'
 
 describe('rebuildPlanState', () => {
   const plan = {
@@ -121,5 +121,95 @@ describe('rebuildPlanState', () => {
     expect(nextPlan.assets.find((asset) => asset.ticker === 'IBIT').currentShares).toBe(5)
     expect(nextRecords[0].assets).toHaveLength(1)
     expect(nextRecords[0].totalActualAmount).toBe(200)
+  })
+
+  it('does not advance VA periods when a rebalance record is inserted', () => {
+    const vaPlan = {
+      ...plan,
+      strategy: 'VA',
+      totalPeriods: 3,
+      currentPeriod: 2,
+    }
+
+    const rebalanceRecord = {
+      id: 'record-rb',
+      planId: 'plan-1',
+      periodIndex: 2,
+      date: '2026-02-15T00:00:00.000Z',
+      tag: 'rebalance',
+      assets: [
+        {
+          ticker: 'QLD',
+          price: 100,
+          actualShares: -0.5,
+          actualAmount: -50,
+        },
+      ],
+      totalActualAmount: -50,
+    }
+
+    const thirdRecord = {
+      id: 'record-3',
+      planId: 'plan-1',
+      periodIndex: 2,
+      date: '2026-03-01T00:00:00.000Z',
+      tag: 'normal',
+      assets: [
+        {
+          ticker: 'QLD',
+          price: 100,
+          actualShares: 1,
+          actualAmount: 100,
+        },
+      ],
+      totalActualAmount: 100,
+    }
+
+    const { nextPlan, nextRecords } = rebuildPlanState(vaPlan, [firstRecord, rebalanceRecord, thirdRecord])
+    const rebuiltRebalance = nextRecords.find((record) => record.id === 'record-rb')
+    const rebuiltThirdRecord = nextRecords.find((record) => record.id === 'record-3')
+
+    expect(nextPlan.currentPeriod).toBe(2)
+    expect(rebuiltRebalance.periodIndex).toBe(1)
+    expect(rebuiltThirdRecord.periodIndex).toBe(1)
+  })
+
+  it('extracts all plans and records from a backup payload', () => {
+    const secondPlan = {
+      ...plan,
+      id: 'plan-2',
+      name: 'Second plan',
+    }
+
+    const payload = {
+      plans: [plan, secondPlan],
+      activePlanId: 'plan-2',
+      records: [firstRecord, { ...secondRecord, planId: 'plan-2' }],
+    }
+
+    const { nextPlans, nextActivePlanId, nextRecords } = getImportState(payload)
+
+    expect(nextPlans).toHaveLength(2)
+    expect(nextActivePlanId).toBe('plan-2')
+    expect(nextRecords).toHaveLength(2)
+  })
+
+  it('removes the selected plan and its related history records', () => {
+    const secondPlan = {
+      ...plan,
+      id: 'plan-2',
+      name: 'Second plan',
+    }
+
+    const { nextPlans, nextRecords, nextActivePlanId } = removePlanData(
+      'plan-1',
+      [plan, secondPlan],
+      [firstRecord, { ...secondRecord, planId: 'plan-2' }],
+      'plan-1',
+    )
+
+    expect(nextPlans).toEqual([secondPlan])
+    expect(nextRecords).toEqual([{ ...secondRecord, planId: 'plan-2' }])
+    expect(nextActivePlanId).toBe('plan-2')
   })
 })

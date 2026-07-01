@@ -1,22 +1,24 @@
 export function normalizeNumericInput(value, options = {}) {
-  const { decimalPlaces = 2, integerOnly = false } = options
+  const { decimalPlaces = 2, integerOnly = false, allowNegative = false } = options
 
   if (value === '' || value === null || value === undefined) {
     return ''
   }
 
-  const text = String(value)
+  const rawText = String(value)
     .replaceAll(',', '')
-    .replace(/[^\d.]/g, '')
+  const isNegative = allowNegative && rawText.trim().startsWith('-')
+  const text = rawText.replace(/[^\d.]/g, '')
 
   if (!text) {
-    return ''
+    return isNegative ? '-' : ''
   }
 
   const hasDecimalPoint = text.includes('.')
   const [rawIntegerPart = '', ...fractionParts] = text.split('.')
   let integerPart = rawIntegerPart
   let fractionPart = fractionParts.join('')
+  const signPrefix = isNegative ? '-' : ''
 
   if (text.startsWith('.')) {
     integerPart = '0'
@@ -25,23 +27,23 @@ export function normalizeNumericInput(value, options = {}) {
   integerPart = integerPart === '' ? '0' : integerPart.replace(/^0+(?=\d)/, '')
 
   if (integerOnly || decimalPlaces <= 0 || !hasDecimalPoint) {
-    return integerPart
+    return `${signPrefix}${integerPart}`
   }
 
   fractionPart = fractionPart.slice(0, decimalPlaces)
 
   if (text.endsWith('.') && fractionPart === '') {
-    return `${integerPart}.`
+    return `${signPrefix}${integerPart}.`
   }
 
-  return fractionPart === '' ? integerPart : `${integerPart}.${fractionPart}`
+  return fractionPart === '' ? `${signPrefix}${integerPart}` : `${signPrefix}${integerPart}.${fractionPart}`
 }
 
 export function formatNumericInput(value, options = {}) {
-  const { decimalPlaces = 2, integerOnly = false } = options
-  const normalized = normalizeNumericInput(value, { decimalPlaces, integerOnly })
+  const { decimalPlaces = 2, integerOnly = false, allowNegative = false } = options
+  const normalized = normalizeNumericInput(value, { decimalPlaces, integerOnly, allowNegative })
 
-  if (normalized === '') {
+  if (normalized === '' || normalized === '-') {
     return ''
   }
 

@@ -6,7 +6,7 @@
   color: #eef3f9;
   background: #0f1117;
   color-scheme: dark;
-  font-family: 'Public Sans', system-ui, sans-serif;
+  font-family: 'Public Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -135,6 +135,7 @@ select {
 
   .topbar-select {
     @apply rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition;
+    font-family: inherit;
   }
 
   .topbar-select,

@@ -7,6 +7,7 @@ const filters = [
   { value: 'normal', label: '正常执行' },
   { value: 'underweight', label: '主动低配' },
   { value: 'paused', label: '本期暂停' },
+  { value: 'rebalance', label: '再平衡' },
 ]
 
 function formatMoney(value) {
@@ -34,12 +35,21 @@ function formatDate(value) {
 function getTagClass(tag) {
   if (tag === 'normal') return 'badge-info'
   if (tag === 'underweight') return 'badge-warning'
+  if (tag === 'rebalance') return 'badge-positive'
   if (tag === 'paused') return 'badge-neutral'
   return 'badge-neutral'
 }
 
 function getFilterLabel(value) {
   return filters.find((filter) => filter.value === value)?.label || value || '未标记'
+}
+
+function getRecordTitle(record) {
+  if (record?.tag === 'rebalance') {
+    return `再平衡 · 第 ${Number(record.periodIndex) + 1} 期区间`
+  }
+
+  return `第 ${Number(record?.periodIndex) + 1} 期`
 }
 
 function roundToTwo(value) {
@@ -113,7 +123,7 @@ function createEditDraft(record) {
     assets: record.assets.map((asset) => ({
       ticker: asset.ticker,
       price: formatNumericInput(asset.price),
-      actualShares: formatNumericInput(asset.actualShares),
+      actualShares: formatNumericInput(asset.actualShares, { allowNegative: true }),
     })),
   }
 }
@@ -154,7 +164,15 @@ function parseBackupPayload(parsed) {
   }
 }
 
-export default function History({ plan, records, onDeleteRecord, onEditRecord, onImportBackup }) {
+export default function History({
+  plan,
+  plans = [],
+  activePlanId,
+  records = [],
+  onDeleteRecord,
+  onEditRecord,
+  onImportBackup,
+}) {
   const [activeFilter, setActiveFilter] = useState('all')
   const [expandedId, setExpandedId] = useState('')
   const [editingId, setEditingId] = useState('')
@@ -164,7 +182,13 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
 
   const planRecords = useMemo(() => {
     const scoped = plan ? records.filter((record) => record.planId === plan.id) : []
-    return scoped.slice().sort((left, right) => right.periodIndex - left.periodIndex)
+    return scoped.slice().sort((left, right) => {
+      if (left.periodIndex !== right.periodIndex) {
+        return right.periodIndex - left.periodIndex
+      }
+
+      return String(right.date || '').localeCompare(String(left.date || ''))
+    })
   }, [plan, records])
 
   const filteredRecords = useMemo(() => {
@@ -176,6 +200,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
   const totalInvested = planRecords.reduce((sum, record) => sum + (Number(record.totalActualAmount) || 0), 0)
   const latestRecordTagLabel = latestRecord ? getFilterLabel(latestRecord.tag) : '暂无记录'
   const activeFilterLabel = getFilterLabel(activeFilter)
+  const currentPlan = plans.find((item) => item.id === activePlanId) || plan || plans[0] || null
 
   const handleExportCsv = () => {
     if (!planRecords.length) return
@@ -188,9 +213,9 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
     const payload = {
       version: '2.0',
       exportedAt: new Date().toISOString(),
-      plans: plan ? [plan] : [],
-      activePlanId: plan?.id || null,
-      plan,
+      plans,
+      activePlanId: activePlanId || currentPlan?.id || null,
+      plan: currentPlan,
       records,
     }
 
@@ -198,7 +223,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
   }
 
   const handleDelete = (record) => {
-    const confirmed = window.confirm(`确认删除第${record.periodIndex + 1}期记录？此操作不可撤销`)
+    const confirmed = window.confirm(`确认删除${record.tag === 'rebalance' ? '这条再平衡' : `第 ${record.periodIndex + 1} 期`}记录吗？此操作不可撤销。`)
     if (!confirmed) {
       return
     }
@@ -257,7 +282,6 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
     }
 
     onEditRecord?.(buildEditedRecord(record, editDraft))
-
     setEditingId('')
     setEditDraft(null)
   }
@@ -274,13 +298,12 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
       return
     }
 
-    const confirmed = window.confirm(`确认从第${record.periodIndex + 1}期删除 ${asset.ticker}？此操作只会删除该期的这个标的。`)
+    const confirmed = window.confirm(`确认从第 ${record.periodIndex + 1} 期删除 ${asset.ticker} 吗？此操作只会删除该期的这个标的。`)
     if (!confirmed) {
       return
     }
 
     const nextAssets = sourceRecord.assets.filter((item) => item.ticker !== asset.ticker)
-
     onEditRecord?.(buildRecordWithAssets(sourceRecord, nextAssets))
     setEditingId('')
     setEditDraft(null)
@@ -321,16 +344,6 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
     }
   }
 
-  if (!plan) {
-    return (
-      <section className="section-shell">
-        <div className="section-card text-center text-textSoft">
-          请先创建计划，历史记录会在执行后自动累积。
-        </div>
-      </section>
-    )
-  }
-
   return (
     <section className="section-shell">
       <div className="section-card">
@@ -339,9 +352,11 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
             <p className="label">Execution Archive</p>
             <h2 className="section-title">历史记录</h2>
             <p className="muted-copy mt-3 max-w-2xl">
-              {isOpenEnded
-                ? '无限定投模式下，所有记录会持续累积。这里更像一份执行台账，而不是列表堆叠。'
-                : '固定预算模式下，你可以在这里回看每一期的投入、执行偏差和计划推进情况。'}
+              {!plan
+                ? '还没有任何计划时，你也可以直接在这里导入完整备份，或导出当前全部本地数据。'
+                : isOpenEnded
+                  ? '无限定投模式下，所有记录会持续累积。这里更像一份执行台账，便于长期回看和修订。'
+                  : '固定预算模式下，你可以在这里回看每一期的投入、执行偏差和计划推进情况。'}
             </p>
           </div>
 
@@ -361,7 +376,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
               className="control-button"
             >
               <Download size={16} />
-              导出备份
+              导出全部备份
             </button>
             <button
               type="button"
@@ -384,46 +399,54 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
 
         <div className="mt-5 grid gap-3 lg:grid-cols-4">
           <div className="surface-stat">
-            <p className="mini-kicker">记录数</p>
-            <p className="mt-3 data-value text-xl">{planRecords.length}</p>
-            <p className="mt-2 text-xs text-muted-foreground">当前计划累计期数</p>
+            <p className="mini-kicker">{plan ? '记录数' : '计划数量'}</p>
+            <p className="mt-3 data-value text-xl">{plan ? planRecords.length : plans.length}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{plan ? '当前计划累计期数' : '当前本地保存的计划总数'}</p>
           </div>
           <div className="surface-stat">
-            <p className="mini-kicker">累计投入</p>
-            <p className="mt-3 data-value text-xl">{formatMoney(totalInvested)}</p>
-            <p className="mt-2 text-xs text-muted-foreground">所有记录的实际投入总和</p>
+            <p className="mini-kicker">{plan ? '累计投入' : '历史记录'}</p>
+            <p className="mt-3 data-value text-xl">{plan ? formatMoney(totalInvested) : records.length}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{plan ? '当前计划所有记录的实际投入总和' : '当前本地保存的历史记录总数'}</p>
           </div>
           <div className="surface-stat">
-            <p className="mini-kicker">最近记录</p>
-            <p className="mt-3 data-value text-xl">{latestRecord ? formatDate(latestRecord.date) : '--'}</p>
-            <p className="mt-2 text-xs text-muted-foreground">{latestRecordTagLabel}</p>
+            <p className="mini-kicker">{plan ? '最近记录' : '当前计划'}</p>
+            <p className={`mt-3 text-xl ${plan ? 'data-value' : 'font-sans font-medium text-white'}`}>
+              {plan ? (latestRecord ? formatDate(latestRecord.date) : '--') : (currentPlan?.name || '--')}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">{plan ? latestRecordTagLabel : '导入后会自动恢复当前计划'}</p>
           </div>
           <div className="surface-stat">
-            <p className="mini-kicker">模式</p>
-            <p className="mt-3 text-base font-medium text-white">{isOpenEnded ? '无限定投' : '固定预算'}</p>
-            <p className="mt-2 text-xs text-muted-foreground">当前筛选 {activeFilterLabel}</p>
+            <p className="mini-kicker">{plan ? '模式' : '备份能力'}</p>
+            <p className="mt-3 text-base font-medium text-white">{plan ? (isOpenEnded ? '无限定投' : '固定预算') : '全量导入 / 导出'}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{plan ? `当前筛选：${activeFilterLabel}` : '一次处理全部计划和历史记录'}</p>
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          {filters.map((filter) => {
-            const active = activeFilter === filter.value
-            return (
-              <button
-                key={filter.value}
-                type="button"
-                onClick={() => setActiveFilter(filter.value)}
-                className={`filter-chip ${active ? 'filter-chip-active' : ''}`}
-              >
-                {filter.label}
-              </button>
-            )
-          })}
-        </div>
+        {plan ? (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {filters.map((filter) => {
+              const active = activeFilter === filter.value
+              return (
+                <button
+                  key={filter.value}
+                  type="button"
+                  onClick={() => setActiveFilter(filter.value)}
+                  className={`filter-chip ${active ? 'filter-chip-active' : ''}`}
+                >
+                  {filter.label}
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-4">
-        {filteredRecords.length ? (
+        {!plan ? (
+          <div className="section-card text-center text-muted-foreground">
+            还没有计划。你现在可以直接导入之前导出的备份，或者前往设置页创建第一份计划。
+          </div>
+        ) : filteredRecords.length ? (
           filteredRecords.map((record) => {
             const expanded = expandedId === record.id
             const editing = editingId === record.id && editDraft
@@ -433,7 +456,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-3">
-                      <h3 className="text-[1.02rem] font-semibold tracking-[-0.02em] text-white">第 {record.periodIndex + 1} 期</h3>
+                      <h3 className="text-[1.02rem] font-semibold tracking-[-0.02em] text-white">{getRecordTitle(record)}</h3>
                       <span className="data-subtle text-sm">{formatDate(record.date)}</span>
                       <span className={getTagClass(record.tag)}>
                         {getFilterLabel(record.tag)}
@@ -495,8 +518,8 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                     <div className="grid gap-4 xl:grid-cols-2">
                       {record.assets.map((asset) => {
                         const draftAsset = editDraft.assets.find((item) => item.ticker === asset.ticker) || {
-                          price: Number(asset.price) || 0,
-                          actualShares: Number(asset.actualShares) || 0,
+                          price: formatNumericInput(asset.price),
+                          actualShares: formatNumericInput(asset.actualShares),
                         }
 
                         return (
@@ -531,14 +554,14 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                                 />
                               </label>
                               <label className="space-y-2">
-                                <span className="text-sm text-muted-foreground">实际买入股数</span>
+                                <span className="text-sm text-muted-foreground">实际执行股数</span>
                                 <input
                                   type="text"
-                                  inputMode="decimal"
+                                  inputMode="text"
                                   step="0.01"
                                   value={draftAsset.actualShares}
-                                  onChange={(event) => updateDraftAsset(asset.ticker, { actualShares: normalizeNumericInput(event.target.value) })}
-                                  onBlur={() => updateDraftAsset(asset.ticker, { actualShares: formatNumericInput(draftAsset.actualShares) })}
+                                  onChange={(event) => updateDraftAsset(asset.ticker, { actualShares: normalizeNumericInput(event.target.value, { allowNegative: true }) })}
+                                  onBlur={() => updateDraftAsset(asset.ticker, { actualShares: formatNumericInput(draftAsset.actualShares, { allowNegative: true }) })}
                                   className="surface-input financial-input"
                                 />
                               </label>
@@ -642,7 +665,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
                               <p className="mt-3 data-value text-base">{asset.suggestedShares}</p>
                             </div>
                             <div className="surface-stat">
-                              <p className="mini-kicker">实际买入</p>
+                              <p className="mini-kicker">实际执行</p>
                               <p className="mt-3 data-value text-base">{asset.actualShares} 股</p>
                               <p className="mt-2 data-subtle text-sm">{formatMoney(asset.actualAmount)}</p>
                             </div>

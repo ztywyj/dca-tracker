@@ -1,0 +1,24 @@
+services:
+  dca-tracker:
+    build:
+      context: .
+    image: dca-tracker:latest
+    container_name: dca-tracker
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      PORT: 3000
+      DATA_DIR: /data
+      TWELVE_DATA_KEY: ${TWELVE_DATA_KEY:-}
+      APP_PASSWORD: ${APP_PASSWORD:-}
+      AUTH_IDLE_TIMEOUT_HOURS: ${AUTH_IDLE_TIMEOUT_HOURS:-720}
+      AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:-}
+    volumes:
+      - "${DCA_TRACKER_DATA_PATH:-./data}:/data"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

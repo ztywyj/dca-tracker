@@ -1,18 +1,21 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import AuthScreen from './components/AuthScreen'
 import Layout from './components/Layout'
 import { getPeriodicAmount, getSuggestedShares as getDcaSuggestedShares } from './utils/dcaCalc'
 import { calcAllTargets, getRequiredInvestment, getSuggestedShares as getVaSuggestedShares } from './utils/vaCalc'
 import { usePlan } from './hooks/usePlan'
 import { useRecords } from './hooks/useRecords'
-import { clearAll } from './utils/storage'
+import { clearAll, getRuntimeInfo, getStorageMeta, subscribeStorageMeta } from './utils/storage'
 import { getRemainingDeployableBudget } from './utils/budget'
 
 const Dashboard = lazy(() => import('./components/Dashboard'))
 const History = lazy(() => import('./components/History'))
 const OperationPanel = lazy(() => import('./components/OperationPanel'))
+const PortfolioOverview = lazy(() => import('./components/PortfolioOverview'))
 const Settings = lazy(() => import('./components/Settings'))
 
 const tabs = {
+  portfolio: PortfolioOverview,
   dashboard: Dashboard,
   operation: OperationPanel,
   history: History,
@@ -30,6 +33,24 @@ function ScreenFallback() {
 
 function roundToTwo(value) {
   return Number((Number(value) || 0).toFixed(2))
+}
+
+function isRebalanceRecord(record) {
+  return record?.tag === 'rebalance'
+}
+
+function compareRecordsChronologically(left, right) {
+  const dateCompare = String(left?.date || '').localeCompare(String(right?.date || ''))
+  if (dateCompare !== 0) {
+    return dateCompare
+  }
+
+  const periodCompare = (Number(left?.periodIndex) || 0) - (Number(right?.periodIndex) || 0)
+  if (periodCompare !== 0) {
+    return periodCompare
+  }
+
+  return String(left?.id || '').localeCompare(String(right?.id || ''))
 }
 
 function normalizeRecordAssets(record) {
@@ -98,15 +119,17 @@ export function rebuildPlanState(plan, records, sourceRecords = records) {
   const planRecords = (Array.isArray(records) ? records : [])
     .filter((record) => record.planId === plan.id)
     .slice()
-    .sort((left, right) => left.periodIndex - right.periodIndex)
+    .sort(compareRecordsChronologically)
 
   const otherRecords = (Array.isArray(records) ? records : []).filter((record) => record.planId !== plan.id)
   const initialSharesMap = getInitialSharesMap(plan, sourceRecords)
   const assetSharesMap = new Map(plan.assets.map((asset) => [asset.ticker, initialSharesMap.get(asset.ticker) || 0]))
   let cumulativeInvested = 0
+  let completedPeriods = 0
 
-  const rebuiltPlanRecords = planRecords.map((record, index) => {
+  const rebuiltPlanRecords = planRecords.map((record) => {
     const normalizedRecord = normalizeRecordAssets(record)
+    const effectivePeriodIndex = completedPeriods
     const nextAssets = normalizedRecord.assets.map((asset) => {
       const planAssetIndex = plan.assets.findIndex((item) => item.ticker === asset.ticker)
       const planAsset = plan.assets[planAssetIndex]
@@ -114,7 +137,7 @@ export function rebuildPlanState(plan, records, sourceRecords = records) {
       const price = roundToTwo(asset.price)
       const currentValueBefore = roundToTwo(previousShares * price)
       const targetValue = plan.strategy === 'VA'
-        ? roundToTwo(Number(targetMatrix?.[index]?.[planAssetIndex] || 0))
+        ? roundToTwo(Number(targetMatrix?.[effectivePeriodIndex]?.[planAssetIndex] || 0))
         : roundToTwo(getPeriodicAmount(plan, planAsset?.weight))
       const requiredAmount = plan.strategy === 'VA'
         ? getRequiredInvestment(currentValueBefore, targetValue)
@@ -144,9 +167,13 @@ export function rebuildPlanState(plan, records, sourceRecords = records) {
     cumulativeInvested = roundToTwo(cumulativeInvested + totalActualAmount)
     const remainingBudget = getRemainingDeployableBudget(plan, cumulativeInvested)
 
+    if (!isRebalanceRecord(normalizedRecord)) {
+      completedPeriods += 1
+    }
+
     return {
       ...normalizedRecord,
-      periodIndex: index,
+      periodIndex: effectivePeriodIndex,
       assets: nextAssets,
       totalActualAmount,
       cumulativeInvested,
@@ -156,7 +183,7 @@ export function rebuildPlanState(plan, records, sourceRecords = records) {
 
   const nextPlan = {
     ...plan,
-    currentPeriod: rebuiltPlanRecords.length,
+    currentPeriod: completedPeriods,
     assets: plan.assets.map((asset) => ({
       ...asset,
       initialShares: roundToTwo(initialSharesMap.get(asset.ticker) || 0),
@@ -166,7 +193,11 @@ export function rebuildPlanState(plan, records, sourceRecords = records) {
 
   const nextRecords = [...otherRecords, ...rebuiltPlanRecords].sort((left, right) => {
     if (left.planId === right.planId) {
-      return right.periodIndex - left.periodIndex
+      if (left.periodIndex !== right.periodIndex) {
+        return right.periodIndex - left.periodIndex
+      }
+
+      return String(right.date || '').localeCompare(String(left.date || ''))
     }
     return right.date.localeCompare(left.date)
   })
@@ -174,6 +205,34 @@ export function rebuildPlanState(plan, records, sourceRecords = records) {
   return {
     nextPlan,
     nextRecords,
+  }
+}
+
+export function getImportState(payload) {
+  const nextPlans = Array.isArray(payload?.plans)
+    ? payload.plans
+    : payload?.plan
+      ? [payload.plan]
+      : []
+
+  return {
+    nextPlans,
+    nextActivePlanId: payload?.activePlanId || nextPlans[0]?.id || null,
+    nextRecords: Array.isArray(payload?.records) ? payload.records : [],
+  }
+}
+
+export function removePlanData(planId, plans, records, activePlanId) {
+  const nextPlans = (Array.isArray(plans) ? plans : []).filter((item) => item.id !== planId)
+  const nextRecords = (Array.isArray(records) ? records : []).filter((record) => record.planId !== planId)
+  const nextActivePlanId = nextPlans.some((item) => item.id === activePlanId) && activePlanId !== planId
+    ? activePlanId
+    : nextPlans[0]?.id || null
+
+  return {
+    nextPlans,
+    nextRecords,
+    nextActivePlanId,
   }
 }
 
@@ -189,23 +248,63 @@ function rebuildStateAfterRecordEdit(plan, records, updatedRecord) {
   return rebuildPlanState(plan, nextRecords, records)
 }
 
+async function parseApiPayload(response) {
+  const text = await response.text()
+  if (!text) {
+    return {}
+  }
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return {}
+  }
+}
+
 export default function App() {
-  const { plan, plans, activePlanId, setActivePlan, replacePlan, resetPlan } = usePlan()
+  const runtime = getRuntimeInfo()
+  const authRequired = Boolean(runtime.authRequired)
+  const authenticated = !authRequired || Boolean(runtime.authenticated)
+  const { plan, plans, activePlanId, setActivePlan, replacePlan, replacePlans, resetPlan } = usePlan()
   const { records, addRecord, replaceRecords } = useRecords()
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState('portfolio')
+  const [storageMeta, setStorageMeta] = useState(() => getStorageMeta())
+  const notifiedRecoveryRef = useRef('')
 
   const Screen = useMemo(() => tabs[activeTab], [activeTab])
+
+  const refreshStorageMeta = () => {
+    setStorageMeta(getStorageMeta())
+  }
+
+  useEffect(() => subscribeStorageMeta(setStorageMeta), [])
+
+  useEffect(() => {
+    if (!storageMeta?.recoveredFromBackup) {
+      return
+    }
+
+    const recoveryToken = `${storageMeta.recoveryFile}|${storageMeta.lastSavedAt}`
+    if (notifiedRecoveryRef.current === recoveryToken) {
+      return
+    }
+
+    notifiedRecoveryRef.current = recoveryToken
+    window.alert(`检测到主数据文件损坏，已自动切换到最近备份。\n\n当前数据目录：${storageMeta.storageDir}`)
+  }, [storageMeta])
 
   const handleSavePlan = (nextPlan) => {
     const { nextPlan: rebuiltPlan, nextRecords } = rebuildPlanState(nextPlan, records)
     replaceRecords(nextRecords)
     replacePlan(rebuiltPlan)
+    refreshStorageMeta()
     setActiveTab('dashboard')
   }
 
   const handleSaveRecord = (record, nextPlan) => {
     addRecord(record)
     replacePlan(nextPlan)
+    refreshStorageMeta()
     setActiveTab('history')
   }
 
@@ -213,6 +312,7 @@ export default function App() {
     const { nextPlan, nextRecords } = rebuildStateAfterRecordDeletion(plan, records, recordId)
     replaceRecords(nextRecords)
     replacePlan(nextPlan)
+    refreshStorageMeta()
     setActiveTab('history')
   }
 
@@ -220,31 +320,61 @@ export default function App() {
     const { nextPlan, nextRecords } = rebuildStateAfterRecordEdit(plan, records, updatedRecord)
     replaceRecords(nextRecords)
     replacePlan(nextPlan)
+    refreshStorageMeta()
     setActiveTab('history')
   }
 
   const handleImportBackup = (payload) => {
-    const nextPlans = Array.isArray(payload?.plans)
-      ? payload.plans
-      : payload?.plan
-        ? [payload.plan]
-        : []
-    const nextActivePlanId = payload?.activePlanId || nextPlans[0]?.id || null
-    const nextRecords = Array.isArray(payload?.records) ? payload.records : []
+    const { nextPlans, nextActivePlanId, nextRecords } = getImportState(payload)
 
     replaceRecords(nextRecords)
-    nextPlans.forEach((item) => replacePlan(item))
-    if (nextActivePlanId) {
-      setActivePlan(nextActivePlanId)
-    }
+    replacePlans(nextPlans, nextActivePlanId)
+    refreshStorageMeta()
     setActiveTab(nextPlans.length ? 'history' : 'settings')
+  }
+
+  const handleDeletePlan = (planId) => {
+    const { nextPlans, nextRecords, nextActivePlanId } = removePlanData(planId, plans, records, activePlanId)
+    replaceRecords(nextRecords)
+    replacePlans(nextPlans, nextActivePlanId)
+    refreshStorageMeta()
+    setActiveTab(nextPlans.length ? 'dashboard' : 'settings')
   }
 
   const handleClearAllData = () => {
     clearAll()
     replaceRecords([])
     resetPlan()
+    refreshStorageMeta()
     setActiveTab('settings')
+  }
+
+  const handleLogin = async (password) => {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password }),
+    })
+    const payload = await parseApiPayload(response)
+
+    if (!response.ok) {
+      throw new Error(payload?.error || '验证失败，请检查密码。')
+    }
+
+    window.location.reload()
+  }
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+    })
+    window.location.reload()
+  }
+
+  if (!authenticated) {
+    return <AuthScreen onLogin={handleLogin} />
   }
 
   return (
@@ -259,13 +389,19 @@ export default function App() {
         <Screen
           plan={plan}
           plans={plans}
+          activePlanId={activePlanId}
+          storageMeta={storageMeta}
           records={records}
+          onChangeActivePlan={setActivePlan}
           onSavePlan={handleSavePlan}
           onSaveRecord={handleSaveRecord}
           onDeleteRecord={handleDeleteRecord}
           onEditRecord={handleEditRecord}
           onImportBackup={handleImportBackup}
+          onDeletePlan={handleDeletePlan}
           onClearAllData={handleClearAllData}
+          authRequired={authRequired}
+          onLogout={handleLogout}
           onNavigate={setActiveTab}
         />
       </Suspense>

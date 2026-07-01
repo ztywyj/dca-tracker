@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Save, Sparkles, Trash2 } from 'lucide-react'
+import { LogOut, Plus, Save, Sparkles, Trash2 } from 'lucide-react'
 import { estimateTargetYield } from '../utils/yieldEstimator'
 import { formatNumericInput, normalizeNumericInput } from '../utils/numericInput'
+import {
+  DEFAULT_SHARE_ROUNDING_STRATEGY,
+  getShareRoundingLabel,
+  normalizeShareRoundingStrategy,
+  SHARE_ROUNDING_OPTIONS,
+} from '../utils/shareRounding'
 
 const strategyOptions = [
   { value: 'VA', label: 'VA定投' },
@@ -46,6 +52,7 @@ function createDraftPlan() {
     currentPeriod: 0,
     frequency: 'monthly',
     targetAnnualReturn: 0.25,
+    shareRoundingStrategy: DEFAULT_SHARE_ROUNDING_STRATEGY,
     assets: [],
     createdAt: '',
   }
@@ -67,6 +74,7 @@ function normalizeFormPlan(source) {
     ...base,
     budgetMode,
     reserveRatio: budgetMode === 'open-ended' ? 0 : clampReserveRatio(base.reserveRatio),
+    shareRoundingStrategy: normalizeShareRoundingStrategy(base.shareRoundingStrategy),
     periodicTarget: hasPeriodicTarget ? formatNumericInput(base.periodicTarget) : '',
     totalBudget: hasTotalBudget ? formatNumericInput(base.totalBudget) : '',
     totalPeriods: budgetMode === 'open-ended'
@@ -129,7 +137,16 @@ function getOptionCardClass(active) {
     : 'subtle-panel text-textSoft'
 }
 
-export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData }) {
+export default function Settings({
+  plan,
+  storageMeta,
+  onSavePlan,
+  onNavigate,
+  onClearAllData,
+  onDeletePlan,
+  authRequired,
+  onLogout,
+}) {
   const [form, setForm] = useState(() => normalizeFormPlan(plan))
   const [showAssetForm, setShowAssetForm] = useState(false)
   const [assetDraft, setAssetDraft] = useState(createAssetDraft())
@@ -148,12 +165,14 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
   )
 
   const isOpenEnded = form.budgetMode === 'open-ended'
+  const isServerFileStorage = storageMeta?.mode === 'server-file'
   const totalBudgetValue = Number(form.totalBudget) || 0
   const totalPeriodsValue = Number(form.totalPeriods) || 0
   const periodicTargetValue = Number(form.periodicTarget) || 0
   const reserveRatioValue = clampReserveRatio(form.reserveRatio)
   const reservedCash = totalBudgetValue * reserveRatioValue
   const deployableCash = totalBudgetValue - reservedCash
+  const shareRoundingLabel = getShareRoundingLabel(form.shareRoundingStrategy)
   const isWeightValid = form.assets.length > 0 && Math.abs(totalWeight - 1) < 0.001
   const hasValidBudget = isOpenEnded ? periodicTargetValue >= 0 : totalBudgetValue > 0 && totalPeriodsValue > 0
   const canSave = form.name.trim() && hasValidBudget && isWeightValid
@@ -269,13 +288,14 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
       name: form.name.trim(),
       budgetMode: isOpenEnded ? 'open-ended' : 'fixed',
       totalBudget: isOpenEnded ? 0 : totalBudgetValue,
-      reserveRatio: isOpenEnded ? 0 : clampReserveRatio(form.reserveRatio || 0.2),
+      reserveRatio: isOpenEnded ? 0 : clampReserveRatio(form.reserveRatio),
       totalPeriods: isOpenEnded
         ? Math.max(totalPeriodsValue || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)
         : totalPeriodsValue,
       periodicTarget: periodicTargetValue,
       currentPeriod: Number(form.currentPeriod) || 0,
       targetAnnualReturn: Number(form.targetAnnualReturn) || 0.25,
+      shareRoundingStrategy: normalizeShareRoundingStrategy(form.shareRoundingStrategy),
       createdAt: form.createdAt || new Date().toISOString(),
       assets: form.assets.map((asset) => ({
         ...asset,
@@ -320,6 +340,19 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
     setAssetDraft(createAssetDraft())
     setEstimatedRange(null)
     onNavigate('settings')
+  }
+
+  const handleDeletePlan = () => {
+    if (!plan?.id) {
+      return
+    }
+
+    const confirmed = window.confirm(`确认删除当前计划“${plan.name || '未命名计划'}”及其全部历史记录吗？此操作无法恢复。`)
+    if (!confirmed) {
+      return
+    }
+
+    onDeletePlan?.(plan.id)
   }
 
   return (
@@ -565,6 +598,34 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
           </div>
 
           <div className="subtle-panel p-4">
+            <p className="mini-kicker">建议股数取整策略</p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+              <label className="space-y-2">
+                <span className="text-sm text-muted-foreground">建议股数计算方式</span>
+                <select
+                  value={form.shareRoundingStrategy}
+                  onChange={(event) => updateField('shareRoundingStrategy', event.target.value)}
+                  className="surface-select"
+                >
+                  {SHARE_ROUNDING_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="surface-stat">
+                <p className="mini-kicker">当前规则</p>
+                <p className="mt-3 text-base font-medium text-white">{shareRoundingLabel}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {SHARE_ROUNDING_OPTIONS.find((option) => option.value === form.shareRoundingStrategy)?.description}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="subtle-panel p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="mini-kicker">资产配置</p>
@@ -782,6 +843,10 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
                 <span className="data-subtle">{form.strategy === 'VA' ? `${Math.round((Number(form.targetAnnualReturn) || 0) * 100)}%` : '不适用'}</span>
               </div>
               <div className="subtle-row">
+                <span>取整策略</span>
+                <span className="data-subtle">{shareRoundingLabel}</span>
+              </div>
+              <div className="subtle-row">
                 <span>权重校验</span>
                 <span className={isWeightValid ? 'text-positive' : 'text-warning'}>
                   {Math.round(totalWeight * 100)}%
@@ -800,6 +865,17 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
             保存当前计划
           </button>
 
+          {plan ? (
+            <button
+              type="button"
+              onClick={handleDeletePlan}
+              className="control-button-danger w-full"
+            >
+              <Trash2 size={18} />
+              删除当前计划
+            </button>
+          ) : null}
+
           <button
             type="button"
             onClick={handleClearAll}
@@ -808,6 +884,67 @@ export default function Settings({ plan, onSavePlan, onNavigate, onClearAllData 
             <Trash2 size={18} />
             清除所有数据
           </button>
+
+          {authRequired ? (
+            <button
+              type="button"
+              onClick={() => onLogout?.()}
+              className="control-button w-full"
+            >
+              <LogOut size={18} />
+              退出验证
+            </button>
+          ) : null}
+
+          <div className="subtle-panel p-4">
+            <p className="mini-kicker">数据存储</p>
+            <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+              <div className="subtle-row">
+                <span>当前模式</span>
+                <span className="data-subtle">{isServerFileStorage ? '服务端文件存储' : '浏览器 localStorage'}</span>
+              </div>
+              <div className="space-y-2">
+                <span className="block">存储目录</span>
+                <p className="break-all rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-3 font-mono text-xs text-white/88">
+                  {storageMeta?.storageDir || '--'}
+                </p>
+              </div>
+              <div className="subtle-row">
+                <span>自动备份</span>
+                <span className="data-subtle">{isServerFileStorage ? `${storageMeta?.backupCount || 0} 份` : '仅手动导出'}</span>
+              </div>
+              <div className="subtle-row">
+                <span>损坏恢复</span>
+                <span className={storageMeta?.recoveredFromBackup ? 'text-warning' : 'text-positive'}>
+                  {storageMeta?.recoveredFromBackup ? '已切换到最近备份' : '正常'}
+                </span>
+              </div>
+              {isServerFileStorage ? (
+                <>
+                  <div className="space-y-2">
+                    <span className="block">数据文件</span>
+                    <p className="break-all rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-3 font-mono text-xs text-white/88">
+                      {storageMeta?.dataFile || '--'}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <span className="block">备份目录</span>
+                    <p className="break-all rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-3 font-mono text-xs text-white/88">
+                      {storageMeta?.backupDir || '--'}
+                    </p>
+                  </div>
+                  <p className="rounded-2xl border border-positive/30 bg-positive/10 px-3 py-3 text-xs leading-6 text-emerald-200">
+                    当前已切换为服务端文件存储。部署到 Docker 后，可以通过卷挂载决定 NAS 上的实际保存位置，并用 `DATA_DIR`
+                    指定容器内的数据目录；系统会自动保留最近备份并在主数据文件损坏时恢复。
+                  </p>
+                </>
+              ) : (
+                <p className="rounded-2xl border border-warning/30 bg-warning/10 px-3 py-3 text-xs leading-6 text-amber-200">
+                  当前是浏览器兼容模式，数据仍保存在本机浏览器中。通过 Docker 部署后会自动切换到 NAS 文件存储。
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </aside>
     </section>

@@ -1,4 +1,5 @@
 import { getDeployableBudget } from './budget'
+import { normalizeShareRoundingStrategy, roundSuggestedShares } from './shareRounding'
 
 const OPEN_ENDED_PLACEHOLDER_PERIODS = 9999
 
@@ -72,10 +73,14 @@ export function getRequiredInvestment(currentValue, targetValue) {
   return roundToTwo(Math.max(0, (Number(targetValue) || 0) - (Number(currentValue) || 0)))
 }
 
-export function getSuggestedShares(requiredAmount, currentPrice) {
+export function getSuggestedShares(requiredAmount, currentPrice, options = {}) {
   const price = Number(currentPrice) || 0
   if (price <= 0) return 0
-  return Math.round((Number(requiredAmount) || 0) / price)
+  return roundSuggestedShares((Number(requiredAmount) || 0) / price, {
+    strategy: normalizeShareRoundingStrategy(options.strategy),
+    currentPrice: price,
+    referencePrice: options.referencePrice,
+  })
 }
 
 export function getUpdatedShares(previousShares, actualSharesBought) {
@@ -97,12 +102,17 @@ export function calculateVaRecommendation({
   targetValue = 0,
   currentValue = 0,
   price = 0,
+  referencePrice = 0,
+  roundingStrategy = 'nearest',
 }) {
   const requiredAmount = getRequiredInvestment(currentValue, targetValue)
 
   return {
     suggestedAmount: requiredAmount,
-    suggestedShares: getSuggestedShares(requiredAmount, price),
+    suggestedShares: getSuggestedShares(requiredAmount, price, {
+      strategy: roundingStrategy,
+      referencePrice,
+    }),
     gap: roundToTwo((Number(targetValue) || 0) - (Number(currentValue) || 0)),
   }
 }

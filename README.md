@@ -1,131 +1,229 @@
-# DCA Tracker — 个人定投记录与复盘工具
+# DCA Tracker
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![React](https://img.shields.io/badge/React-Vite-blue.svg)](https://vitejs.dev/)
-[![Deploy](https://img.shields.io/badge/Deploy-Vercel-black.svg)](https://dca-tracker-steel.vercel.app)
+一个用于记录和复盘定投计划的应用，支持 `VA` 和 `DCA` 两种策略、多计划管理、历史导入导出，以及 Docker / NAS 场景下的本地文件持久化。
 
-**[🌐 在线体验 →](https://dca-tracker-steel.vercel.app)**
+现在的默认部署方式是：
 
-一款基于 React + Vite 构建的个人定投追踪 Web App。支持 **VA 价值平均** 与 **DCA 定额** 两种策略，支持多资产组合管理，数据本地存储无需后端，可一键部署到 Vercel。
+- 前端由 Vite 构建
+- Node 服务负责提供运行时配置、行情代理和文件存储
+- 数据保存到 Docker 挂载目录
+- 自动保留最近备份，并在主数据文件损坏时自动回滚到最近有效备份
 
----
+## 当前功能
 
-## 🙏 赞助商
+- 支持 `VA 定投` 和 `DCA 定额`
+- 支持多计划并存和计划切换
+- 历史页可以直接导入 / 导出备份
+- 支持一键导入 / 导出全部计划和全部历史
+- 支持删除当前计划
+- Docker / NAS 部署时自动改为文件存储
+- 可通过 Docker 环境变量配置 `TWELVE_DATA_KEY`
+- 可通过页面内密码认证保护外网访问
 
-本项目由以下赞助商提供支持，感谢他们对开源社区的贡献！
+## 数据存储方式
 
-| | |
-|:---:|:---|
-| <img src="docs/sponsors/intelalloc.png" width="140" alt="IntelAlloc"> | 感谢 **IntelAlloc** 赞助了本项目！IntelAlloc 是一家稳定、高效的 API 中转服务商，提供 Claude Code、Codex 等多种中转服务。欢迎使用[此链接](https://backend.intelalloc.com/register?promo=FEIFEI)注册，优惠码**专人专码，私信领取**。 |
+应用支持两种运行模式：
 
----
+- `Docker / 服务端模式`
+  数据保存在服务端文件中，默认位于容器内的 `DATA_DIR` 目录，主数据文件为 `dca-data.json`，备份保存在 `backups/` 子目录。
+- `前端开发兼容模式`
+  如果只运行 `npm run dev`，则回退到浏览器 `localStorage`，方便前端开发，但不适合作为正式持久化方案。
 
-## ✨ 功能特性
+正式部署到 NAS 时，建议始终使用 Docker 模式。
 
-- **双策略支持**：DCA 定额（每期固定金额）和 VA 价值平均（跟踪目标市值路径）
-- **双预算模式**：固定总预算分期投完，或无限定投持续执行
-- **多资产组合**：按权重配置多只标的，自动计算每期各资产建议买入金额与股数
-- **自动行情获取**：接入 Twelve Data API，支持价格自动拉取，失败自动回退手动输入
-- **可视化总览**：组合轨迹图、仓位结构、投入节奏、四大核心指标一目了然
-- **历史台账管理**：支持按标签筛选、编辑、删除历史记录，并可导出 CSV / JSON 备份
-- **本地数据存储**：所有数据保存在浏览器 `localStorage`，无需注册账号，无需后端
+## Docker 快速开始
 
----
+### 方式一：使用 compose
 
-## 📸 功能页面
-
-| 页面 | 说明 |
-|------|------|
-| **总览** | 查看全局指标：总市值、累计投入、浮动盈亏、组合轨迹、仓位结构 |
-| **本期操作** | 录入本期价格，确认建议股数，记录实际买入 |
-| **历史** | 查看每一期执行台账，支持编辑、删除、导出、导入 |
-| **设置** | 创建或修改计划，配置策略、预算、频率和资产权重 |
-
----
-
-## 🚀 快速开始
-
-### 本地运行
+1. 复制示例环境变量文件：
 
 ```bash
-# 1. 克隆仓库
-git clone https://github.com/Fe1ix-deng/dca-tracker.git
-cd dca-tracker
-
-# 2. 配置环境变量
 cp .env.example .env
-# 在 .env 中填入你的 Twelve Data API Key（可选，没有也能手动输入价格）
-
-# 3. 安装依赖并启动
-npm install && npm run dev
 ```
 
-### 部署到 Vercel
+2. 按需修改 `.env`：
 
-1. 将项目 Push 到 GitHub
-2. 在 [Vercel](https://vercel.com) 导入该仓库
-3. Framework 选择 `Vite`
-4. 在 Vercel 的 `Environment Variables` 中添加：`VITE_TWELVE_DATA_KEY`
-5. 保持默认设置，一键部署
-
-> 项目根目录已包含 `vercel.json`，确保单页应用路由正常重写到 `index.html`。
-
----
-
-## ⚙️ 环境变量
-
-在项目根目录创建 `.env`：
-
-```
-VITE_TWELVE_DATA_KEY=your_twelve_data_key
+```env
+APP_PORT=3000
+DCA_TRACKER_DATA_PATH=/volume1/docker/dca-tracker
+TWELVE_DATA_KEY=your_api_key_here
+APP_PASSWORD=change_me
+AUTH_IDLE_TIMEOUT_HOURS=720
+AUTH_SESSION_SECRET=replace_with_a_long_random_secret
 ```
 
-- API Key 从 [Twelve Data](https://twelvedata.com/) 免费获取
-- 如果不配置，价格自动获取将不可用，但手动输入功能完全正常
-- 请勿将 `.env` 提交到 GitHub
+3. 启动容器：
 
----
+```bash
+docker compose up -d --build
+```
 
-## 📖 使用说明
+4. 打开：
 
-详细的操作指南请参阅 **[使用说明.md](./使用说明.md)**，涵盖：
+```text
+http://NAS_IP:3000
+```
 
-- 如何创建第一份定投计划
-- DCA 与 VA 策略的区别和选择建议
-- 「本期操作」页面各字段含义
-- 「总览」页面各指标如何解读
-- 数据导出与备份方法
+### 方式二：直接使用 `docker run`
 
----
+```bash
+docker build -t dca-tracker:latest .
 
-## 🛠️ 技术栈
+docker run -d \
+  --name dca-tracker \
+  -p 3000:3000 \
+  -e DATA_DIR=/data \
+  -e TWELVE_DATA_KEY=your_api_key_here \
+  -e APP_PASSWORD=change_me \
+  -e AUTH_IDLE_TIMEOUT_HOURS=720 \
+  -e AUTH_SESSION_SECRET=replace_with_a_long_random_secret \
+  -v /volume1/docker/dca-tracker:/data \
+  --restart unless-stopped \
+  dca-tracker:latest
+```
 
-- **前端框架**：React 18 + Vite
-- **样式**：Tailwind CSS
-- **数据持久化**：浏览器 `localStorage`
-- **行情 API**：Twelve Data
-- **部署**：Vercel
+说明：
 
----
+- `-v /volume1/docker/dca-tracker:/data` 决定 NAS 上的实际保存路径
+- `-e DATA_DIR=/data` 决定容器内部使用哪个目录存储数据
+- 不配置 `TWELVE_DATA_KEY` 也可以正常使用，只是自动获取价格会回退为手动输入
 
-## ⚠️ 重要提示
+## 环境变量
 
-- 数据存储在**浏览器本地**，换浏览器或清除缓存后数据不会跟随迁移，建议定期在「历史」页导出 JSON 备份
-- 本工具仅用于**个人记录与复盘**，不提供任何投资建议
+| 变量名 | 用途 | 默认值 |
+| --- | --- | --- |
+| `APP_PORT` | compose 暴露到宿主机的端口 | `3000` |
+| `DATA_DIR` | 容器内数据目录 | `/data` |
+| `DCA_TRACKER_DATA_PATH` | compose 挂载到宿主机的实际目录 | `./data` |
+| `TWELVE_DATA_KEY` | Twelve Data API Key，可选 | 空 |
+| `APP_PASSWORD` | 页面访问密码；留空表示不启用认证 | 空 |
+| `AUTH_IDLE_TIMEOUT_HOURS` | 空闲多久后要求重新登录 | `720` |
+| `AUTH_SESSION_SECRET` | 会话签名密钥，建议设置为长随机字符串 | 空 |
+| `PORT` | Node 服务监听端口 | `3000` |
 
----
+注意：
 
-## 📄 开源协议
+- `TWELVE_DATA_KEY` 现在只需要配置在 Docker / 服务端环境中，不再打包进前端。
+- `.env.example` 主要是给 `docker compose` 做变量替换参考，不是前端构建时注入用。
+- 只要设置了 `APP_PASSWORD`，应用就会自动启用页面内登录页和长时会话。
+- 如果你准备暴露到外网，建议同时使用 HTTPS 反向代理，并设置独立的 `AUTH_SESSION_SECRET`。
 
-本项目基于 [MIT License](./LICENSE) 开源。
+## 自动备份与损坏恢复
 
----
+服务端文件存储具备以下特性：
 
-## 📮 联系方式
+- 首次启动会自动创建 `dca-data.json`
+- 每次写入会自动生成备份
+- 默认保留最近 `20` 份备份
+- 如果主数据文件损坏，会自动切换到最近一份可用备份
+- 应用界面会显示当前存储目录、数据文件、备份目录和恢复状态
 
-- **Issue**：[GitHub Issues](https://github.com/Fe1ix-deng/dca-tracker/issues)
-- **GitHub**：[@Fe1ix-deng](https://github.com/Fe1ix-deng)
+## Windows 开发机部署到 Linux NAS，需要做什么
 
----
+推荐有两条路。
 
-如果这个项目对你有帮助，欢迎点一个 ⭐ Star 支持！
+### 方案 A：最省事，直接在 NAS 上构建
+
+适合 NAS 已经装好 Docker / Container Manager。
+
+1. 把整个项目文件夹复制到 NAS。
+2. 在 NAS 上进入项目目录。
+3. 按 `.env.example` 或 NAS 图形界面配置环境变量。
+4. 执行：
+
+```bash
+docker compose up -d --build
+```
+
+优点：
+
+- 不用管跨平台镜像
+- 改完代码后直接在 NAS 重新构建即可
+
+### 方案 B：在 Windows 先构建 Linux 镜像，再传到 NAS
+
+适合你想在本地先出镜像，再上传。
+
+1. 先确认 NAS CPU 架构：
+
+- Intel / AMD 一般用 `linux/amd64`
+- 新一些 ARM NAS 一般用 `linux/arm64`
+
+2. 在 Windows 上构建对应 Linux 镜像：
+
+```bash
+docker buildx build --platform linux/amd64 -t dca-tracker:latest --load .
+```
+
+如果你的 NAS 是 ARM，把 `linux/amd64` 换成 `linux/arm64`。
+
+3. 导出镜像：
+
+```bash
+docker save -o dca-tracker-linux.tar dca-tracker:latest
+```
+
+4. 把 `dca-tracker-linux.tar` 传到 NAS。
+
+5. 在 NAS 上导入：
+
+```bash
+docker load -i dca-tracker-linux.tar
+```
+
+6. 然后再用 `docker run` 或 `docker compose` 启动，并挂载数据目录。
+
+## 本地开发
+
+### 仅前端开发
+
+```bash
+npm install
+npm run dev
+```
+
+此模式下使用浏览器 `localStorage`。
+
+### 本地模拟 Docker / 服务端模式
+
+```bash
+npm install
+npm run build
+npm start
+```
+
+如果你想本地测试自动行情：
+
+PowerShell：
+
+```powershell
+$env:TWELVE_DATA_KEY="your_api_key_here"
+npm run build
+npm start
+```
+
+## 测试
+
+```bash
+npm test
+```
+
+## 技术栈
+
+- React 18
+- Vite
+- Express
+- Twelve Data
+- Docker
+
+## 迁移说明
+
+如果你之前是纯浏览器模式：
+
+- 旧数据仍可通过历史页导出 JSON
+- Docker 部署后可直接在历史页导入 JSON
+- 导入后后续数据会自动保存在 NAS 挂载目录中
+
+## License
+
+MIT

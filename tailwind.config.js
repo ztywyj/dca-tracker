@@ -22,9 +22,9 @@ export default {
         infoSoft: '#0e2940',
       },
       fontFamily: {
-        sans: ['Public Sans', 'system-ui', 'sans-serif'],
+        sans: ['Public Sans', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', '"Noto Sans CJK SC"', 'system-ui', 'sans-serif'],
         display: ['Literata', 'Georgia', 'serif'],
-        mono: ['"IBM Plex Mono"', 'monospace'],
+        mono: ['"IBM Plex Mono"', '"SFMono-Regular"', '"Cascadia Mono"', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'monospace'],
       },
       boxShadow: {
         glow: '0 0 0 1px rgba(96, 165, 250, 0.07), 0 12px 24px rgba(2, 6, 18, 0.28)',

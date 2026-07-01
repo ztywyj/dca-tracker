@@ -11,11 +11,13 @@ import {
 } from '../utils/vaCalc'
 import { fetchQuote } from '../hooks/useQuote'
 import { getRemainingDeployableBudget } from '../utils/budget'
+import { getNextSuggestedOperationDate } from '../utils/schedule'
 
 const decisionOptions = [
   { value: 'normal', label: '正常执行' },
   { value: 'underweight', label: '主动低配' },
   { value: 'paused', label: '本期暂停' },
+  { value: 'rebalance', label: '再平衡' },
 ]
 
 function formatMoney(value) {
@@ -40,6 +42,19 @@ function getDecisionButtonClass(active) {
   return active ? 'filter-chip filter-chip-active justify-center' : 'filter-chip justify-center'
 }
 
+function isRebalanceTag(value) {
+  return value === 'rebalance'
+}
+
+function getLatestRecordedAssetPriceMap(planId, records = []) {
+  const latestRecord = (Array.isArray(records) ? records : [])
+    .filter((record) => record.planId === planId)
+    .slice()
+    .sort((left, right) => String(right.date || '').localeCompare(String(left.date || '')))[0]
+
+  return Object.fromEntries((latestRecord?.assets || []).map((asset) => [asset.ticker, Number(asset.price) || 0]))
+}
+
 export default function OperationPanel({ plan, records, onSaveRecord, onNavigate }) {
   const [operationDate, setOperationDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [tag, setTag] = useState('normal')
@@ -49,6 +64,10 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
 
   const targetMatrix = useMemo(() => (plan ? calcAllTargets(plan) : []), [plan])
   const isOpenEnded = plan?.budgetMode === 'open-ended'
+  const latestRecordedAssetPriceMap = useMemo(
+    () => (plan ? getLatestRecordedAssetPriceMap(plan.id, records) : {}),
+    [plan, records],
+  )
 
   useEffect(() => {
     if (!plan?.assets?.length) {
@@ -85,6 +104,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
     ? rawCurrentPeriod
     : Math.min(rawCurrentPeriod, totalPeriods - 1)
   const latestRecord = records.find((record) => record.planId === plan.id && record.periodIndex === rawCurrentPeriod - 1)
+  const suggestedNextDate = getNextSuggestedOperationDate(plan, records)
 
   const currentAssets = plan.assets.map((asset, index) => {
     const state = assetStates.find((item) => item.ticker === asset.ticker) || {
@@ -108,9 +128,13 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
         ? roundToTwo(targetValue)
         : getRequiredInvestment(currentValueBefore, targetValue)
       : getPeriodicAmount(plan, asset.weight)
+    const shareSuggestionOptions = {
+      strategy: plan.shareRoundingStrategy,
+      referencePrice: latestRecordedAssetPriceMap[asset.ticker] || 0,
+    }
     const suggestedShares = plan.strategy === 'VA'
-      ? getVaSuggestedShares(requiredAmount, price)
-      : getDcaSuggestedShares(requiredAmount, price)
+      ? getVaSuggestedShares(requiredAmount, price, shareSuggestionOptions)
+      : getDcaSuggestedShares(requiredAmount, price, shareSuggestionOptions)
     const hasManualActualShares = state.actualShares !== null && state.actualShares !== undefined
     const actualShares = hasManualActualShares ? roundToTwo(toNumberOrFallback(state.actualShares, 0)) : roundToTwo(suggestedShares)
     const actualAmount = roundToTwo(actualShares * price)
@@ -197,7 +221,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
 
     const nextPlan = {
       ...plan,
-      currentPeriod: (Number(plan.currentPeriod) || 0) + 1,
+      currentPeriod: isRebalanceTag(tag) ? (Number(plan.currentPeriod) || 0) : (Number(plan.currentPeriod) || 0) + 1,
       assets: plan.assets.map((asset) => {
         const currentAsset = currentAssets.find((item) => item.ticker === asset.ticker)
         return {
@@ -254,7 +278,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
           </button>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-4">
+        <div className="mt-5 grid gap-3 lg:grid-cols-5">
           <div className="surface-stat">
             <p className="mini-kicker">计划策略</p>
             <p className="mt-3 text-base font-medium text-white">{plan.strategy}</p>
@@ -271,8 +295,13 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
             <p className="mt-2 text-xs text-muted-foreground">已录入价格 {pricingReadyCount}/{plan.assets.length}</p>
           </div>
           <div className="surface-stat">
+            <p className="mini-kicker">建议下次定投</p>
+            <p className="mt-3 data-value text-xl">{suggestedNextDate || '--'}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{latestRecord ? '按上一期频率顺延' : '暂无记录，建议从今天开始'}</p>
+          </div>
+          <div className="surface-stat">
             <p className="mini-kicker">{isOpenEnded ? '本期目标' : '预算模式'}</p>
-            <p className="mt-3 data-value text-xl">
+            <p className={`mt-3 text-xl ${isOpenEnded ? 'data-value' : 'font-sans font-medium text-white'}`}>
               {isOpenEnded ? formatMoney(plan.periodicTarget) : '固定预算'}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">{isOpenEnded ? '目标投入参考值' : '按总预算推进'}</p>
@@ -339,15 +368,15 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                 </div>
 
                 <div className="subtle-panel flex h-full flex-col p-4">
-                  <p className="mini-kicker">实际买入股数</p>
+                  <p className="mini-kicker">实际执行股数</p>
                   <div className="mt-4 flex-1">
                     <input
                       type="text"
-                      inputMode="decimal"
+                      inputMode="text"
                       step="0.01"
                       value={asset.actualSharesDisplay}
                       placeholder="0"
-                      onChange={(event) => updateAssetState(asset.ticker, { actualShares: normalizeNumericInput(event.target.value) })}
+                      onChange={(event) => updateAssetState(asset.ticker, { actualShares: normalizeNumericInput(event.target.value, { allowNegative: true }) })}
                       onFocus={(event) => {
                         if (!asset.hasManualActualShares) {
                           event.target.select()
@@ -359,14 +388,15 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                         }
 
                         updateAssetState(asset.ticker, {
-                          actualShares: formatNumericInput(asset.actualSharesInput),
+                          actualShares: formatNumericInput(asset.actualSharesInput, { allowNegative: true }),
                         })
                       }}
                       className="operation-field operation-share-field financial-input"
                     />
                   </div>
+                  <p className="mt-3 text-xs text-muted-foreground">支持负数，卖出或减仓时可直接输入负股数。</p>
                   <div className="mt-4 subtle-row operation-footer-row">
-                    <span className="operation-footer-label">实际投入金额</span>
+                    <span className="operation-footer-label">实际变动金额</span>
                     <span className="operation-footer-value">{formatMoney(asset.actualAmount)}</span>
                   </div>
                 </div>
@@ -406,11 +436,11 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
           <div>
             <p className="label">Decision & Commit</p>
             <h3 className="section-title">确认本期执行</h3>
-            <p className="muted-copy mt-3">先标记本期执行决策，再补充备注，最后把整期记录写入历史。</p>
+            <p className="muted-copy mt-3">先标记本期执行决策，再补充备注，最后把整期记录写入历史。选择“再平衡”时只会更新仓位，不推进下一期 VA 节奏。</p>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
           {decisionOptions.map((option) => (
             <button
               key={option.value}

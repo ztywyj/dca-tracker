@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { loadActivePlanId, loadPlan, loadPlans, saveActivePlanId, savePlan, savePlans } from '../utils/storage'
+import { DEFAULT_SHARE_ROUNDING_STRATEGY, normalizeShareRoundingStrategy } from '../utils/shareRounding'
 
 const defaultPlan = null
 const OPEN_ENDED_PLACEHOLDER_PERIODS = 9999
@@ -22,6 +23,7 @@ function createEmptyPlan() {
     currentPeriod: 0,
     frequency: 'monthly',
     targetAnnualReturn: 0.25,
+    shareRoundingStrategy: DEFAULT_SHARE_ROUNDING_STRATEGY,
     assets: [],
     createdAt: '',
   }
@@ -38,6 +40,7 @@ function normalizePlan(plan) {
     budgetMode,
     reserveRatio: budgetMode === 'open-ended' ? 0 : clampReserveRatio(plan.reserveRatio),
     periodicTarget: Number(plan.periodicTarget) || 0,
+    shareRoundingStrategy: normalizeShareRoundingStrategy(plan.shareRoundingStrategy),
     totalPeriods: budgetMode === 'open-ended'
       ? Math.max(Number(plan.totalPeriods) || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)
       : Math.max(1, Number(plan.totalPeriods) || 1),
@@ -99,6 +102,21 @@ export function usePlan() {
     })
   }
 
+  const replacePlans = (nextPlans, nextActivePlanId = null) => {
+    const normalizedPlans = (Array.isArray(nextPlans) ? nextPlans : [])
+      .map(normalizePlan)
+      .filter(Boolean)
+    const safeActivePlanId = normalizedPlans.some((item) => item.id === nextActivePlanId)
+      ? nextActivePlanId
+      : normalizedPlans[0]?.id || null
+
+    persistPlanState(normalizedPlans, safeActivePlanId)
+    setState({
+      plans: normalizedPlans,
+      activePlanId: safeActivePlanId,
+    })
+  }
+
   const setActivePlan = (nextActivePlanId) => {
     setState((current) => {
       const safeActivePlanId = current.plans.some((item) => item.id === nextActivePlanId)
@@ -126,6 +144,7 @@ export function usePlan() {
       activePlanId,
       setActivePlan,
       replacePlan,
+      replacePlans,
       resetPlan,
       defaultPlan,
       createEmptyPlan,

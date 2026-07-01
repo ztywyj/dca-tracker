@@ -1,41 +1,46 @@
 import { useCallback, useEffect, useState } from 'react'
+import { getRuntimeInfo } from '../utils/storage'
 
-const API_BASE_URL = 'https://api.twelvedata.com/price'
-const API_KEY = import.meta.env.VITE_TWELVE_DATA_KEY
+const QUOTE_API_PATH = '/api/quote'
 
 function roundQuotePrice(value) {
   const numeric = Number.parseFloat(value)
   return Number.isFinite(numeric) ? Number(numeric.toFixed(2)) : null
 }
 
-function getReadableErrorMessage(data, error) {
-  if (!API_KEY) {
-    return '未配置 Twelve Data API Key，请检查 .env 或部署环境变量。'
-  }
+function getRuntimeConfig() {
+  return getRuntimeInfo()
+}
 
+function getReadableErrorMessage(data, error) {
   if (error?.name === 'AbortError' || error?.name === 'TimeoutError') {
     return '请求超时，请稍后重试或手动输入。'
   }
 
+  if (error instanceof SyntaxError) {
+    return '行情服务返回了无效响应，请检查容器日志。'
+  }
+
   if (error instanceof TypeError) {
-    return '网络异常，可能已断网或接口不可达，请手动输入。'
+    return '自动行情服务不可用，请确认 Docker 容器已启动，或先手动输入价格。'
   }
 
-  if (data?.code === 401 || data?.status === 'error') {
-    if (String(data?.message || '').toLowerCase().includes('api key')) {
-      return 'API Key 无效，请检查 Twelve Data 配置。'
-    }
+  const message = String(data?.error || data?.message || '')
+  const lowerMessage = message.toLowerCase()
+
+  if (lowerMessage.includes('twelve_data_key') || lowerMessage.includes('api key')) {
+    return '服务端未配置有效的 Twelve Data API Key，请在 Docker 环境变量中设置 `TWELVE_DATA_KEY`。'
   }
 
-  if (data?.code === 429 || String(data?.message || '').includes('API credits')) {
+  if (data?.code === 429 || lowerMessage.includes('api credits')) {
     return 'API 调用额度已用尽，请稍后再试或手动输入。'
   }
 
-  if (String(data?.message || '').toLowerCase().includes('symbol') || String(data?.message || '').toLowerCase().includes('ticker')) {
+  if (lowerMessage.includes('symbol') || lowerMessage.includes('ticker')) {
     return 'Ticker 不存在或格式无效，请检查后重试。'
   }
 
-  return '获取失败，请手动输入。'
+  return message || '获取失败，请手动输入。'
 }
 
 function createTimeoutSignal(timeoutMs = 5000) {
@@ -50,6 +55,19 @@ function createTimeoutSignal(timeoutMs = 5000) {
   }
 }
 
+async function parseJsonResponse(response) {
+  const text = await response.text()
+  if (!text) {
+    return {}
+  }
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new SyntaxError('Invalid JSON response')
+  }
+}
+
 export async function fetchQuote(ticker) {
   const symbol = String(ticker || '').trim().toUpperCase()
   if (!symbol) {
@@ -59,20 +77,30 @@ export async function fetchQuote(ticker) {
     }
   }
 
-  if (!API_KEY) {
+  const runtime = getRuntimeConfig()
+  if (runtime?.quoteApiEnabled === false) {
     return {
       price: null,
-      error: '未配置 Twelve Data API Key，请检查 .env 或部署环境变量。',
+      error: '服务端尚未配置 Twelve Data API Key，请在 Docker 环境变量中设置 `TWELVE_DATA_KEY`。',
     }
   }
 
-  const url = `${API_BASE_URL}?symbol=${encodeURIComponent(symbol)}&apikey=${API_KEY}`
+  const url = `${QUOTE_API_PATH}?symbol=${encodeURIComponent(symbol)}`
 
   let timeout
   try {
     timeout = createTimeoutSignal()
     const res = await fetch(url, { signal: timeout.signal })
-    const data = await res.json()
+
+    if (res.status === 401 && typeof window !== 'undefined') {
+      window.location.reload()
+      return {
+        price: null,
+        error: '登录已过期，请重新验证。',
+      }
+    }
+
+    const data = await parseJsonResponse(res)
     const roundedPrice = roundQuotePrice(data?.price)
 
     if (roundedPrice !== null) {
@@ -84,7 +112,7 @@ export async function fetchQuote(ticker) {
 
     return {
       price: null,
-      error: getReadableErrorMessage(data, null),
+      error: getReadableErrorMessage(data, res.ok ? null : new Error('Quote lookup failed')),
     }
   } catch (error) {
     console.warn(`Twelve Data quote fetch failed for ${symbol}`, error)

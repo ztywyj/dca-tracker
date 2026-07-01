@@ -5,12 +5,51 @@ const STORAGE_KEYS = {
   records: 'dca-tracker:records',
 }
 
-function canUseStorage() {
+const RUNTIME_EVENT_NAME = 'dca-tracker:runtime-update'
+
+let persistQueue = Promise.resolve()
+
+function getServerRuntime() {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  return window.__DCA_RUNTIME__ && typeof window.__DCA_RUNTIME__ === 'object'
+    ? window.__DCA_RUNTIME__
+    : null
+}
+
+function getServerData() {
+  const runtime = getServerRuntime()
+  const data = runtime?.initialData
+  return data && typeof data === 'object' ? data : null
+}
+
+function hasServerRuntime() {
+  return Boolean(getServerRuntime())
+}
+
+function createBrowserMeta() {
+  return {
+    mode: 'browser-localStorage',
+    storageDir: 'Current browser localStorage',
+    dataFile: 'Current browser localStorage',
+    backupDir: 'Use manual export for backups',
+    backupCount: 0,
+    recoveredFromBackup: false,
+    recoveryFile: '',
+    recoveryReason: '',
+    lastLoadSource: 'browser-localStorage',
+    lastSavedAt: '',
+  }
+}
+
+function canUseBrowserStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
 }
 
-function readStorage(key, fallback) {
-  if (!canUseStorage()) {
+function readBrowserStorage(key, fallback) {
+  if (!canUseBrowserStorage()) {
     return fallback
   }
 
@@ -23,8 +62,8 @@ function readStorage(key, fallback) {
   }
 }
 
-function writeStorage(key, value) {
-  if (!canUseStorage()) {
+function writeBrowserStorage(key, value) {
+  if (!canUseBrowserStorage()) {
     return
   }
 
@@ -33,6 +72,119 @@ function writeStorage(key, value) {
   } catch (error) {
     console.error(`Failed to write storage key: ${key}`, error)
   }
+}
+
+function updateServerRuntime(patch) {
+  const runtime = getServerRuntime()
+  if (!runtime) {
+    return
+  }
+
+  Object.assign(runtime, patch)
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(RUNTIME_EVENT_NAME, { detail: runtime }))
+  }
+}
+
+function enqueuePersist(task) {
+  persistQueue = persistQueue
+    .catch(() => undefined)
+    .then(task)
+    .catch((error) => {
+      console.error('Failed to persist server-backed storage', error)
+    })
+}
+
+function handleUnauthorizedResponse(response) {
+  if (response.status === 401 && typeof window !== 'undefined') {
+    window.location.reload()
+    return true
+  }
+
+  return false
+}
+
+function persistServerValue(key, value) {
+  enqueuePersist(async () => {
+    const response = await fetch(`/api/storage/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ value }),
+    })
+
+    if (handleUnauthorizedResponse(response)) {
+      return
+    }
+
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(payload?.error || `Failed to persist ${key}`)
+    }
+
+    if (payload?.meta) {
+      updateServerRuntime({ storageMeta: payload.meta })
+    }
+  })
+}
+
+function persistServerClear() {
+  enqueuePersist(async () => {
+    const response = await fetch('/api/storage', {
+      method: 'DELETE',
+    })
+
+    if (handleUnauthorizedResponse(response)) {
+      return
+    }
+
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Failed to clear server-backed storage')
+    }
+
+    if (payload?.meta) {
+      updateServerRuntime({ storageMeta: payload.meta })
+    }
+  })
+}
+
+function readStorage(key, fallback) {
+  const serverData = getServerData()
+
+  if (serverData) {
+    return serverData[key] === undefined ? fallback : serverData[key]
+  }
+
+  if (hasServerRuntime()) {
+    return fallback
+  }
+
+  return readBrowserStorage(key, fallback)
+}
+
+function writeStorage(key, value) {
+  const runtime = getServerRuntime()
+  const serverData = getServerData()
+
+  if (runtime && serverData) {
+    updateServerRuntime({
+      initialData: {
+        ...serverData,
+        [key]: value,
+      },
+    })
+    persistServerValue(key, value)
+    return
+  }
+
+  if (runtime) {
+    return
+  }
+
+  writeBrowserStorage(key, value)
 }
 
 export function savePlan(plan) {
@@ -68,7 +220,27 @@ export function loadRecords() {
 }
 
 export function clearAll() {
-  if (!canUseStorage()) {
+  const runtime = getServerRuntime()
+  const serverData = getServerData()
+
+  if (runtime && serverData) {
+    updateServerRuntime({
+      initialData: {
+        [STORAGE_KEYS.plan]: null,
+        [STORAGE_KEYS.plans]: [],
+        [STORAGE_KEYS.activePlanId]: null,
+        [STORAGE_KEYS.records]: [],
+      },
+    })
+    persistServerClear()
+    return
+  }
+
+  if (runtime) {
+    return
+  }
+
+  if (!canUseBrowserStorage()) {
     return
   }
 
@@ -79,6 +251,29 @@ export function clearAll() {
     window.localStorage.removeItem(STORAGE_KEYS.records)
   } catch (error) {
     console.error('Failed to clear storage', error)
+  }
+}
+
+export function getStorageMeta() {
+  return getServerRuntime()?.storageMeta || createBrowserMeta()
+}
+
+export function getRuntimeInfo() {
+  return getServerRuntime() || {}
+}
+
+export function subscribeStorageMeta(listener) {
+  if (typeof window === 'undefined' || typeof listener !== 'function') {
+    return () => {}
+  }
+
+  const handleRuntimeUpdate = (event) => {
+    listener(event?.detail?.storageMeta || getStorageMeta())
+  }
+
+  window.addEventListener(RUNTIME_EVENT_NAME, handleRuntimeUpdate)
+  return () => {
+    window.removeEventListener(RUNTIME_EVENT_NAME, handleRuntimeUpdate)
   }
 }
 

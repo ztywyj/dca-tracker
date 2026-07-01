@@ -15,6 +15,7 @@ import {
   YAxis,
 } from 'recharts'
 import { getDeployableBudget, getRemainingDeployableBudget } from '../utils/budget'
+import { getNextSuggestedOperationDate } from '../utils/schedule'
 
 const PIE_COLORS = ['#8ea9ff', '#51d0bf', '#f2b36f', '#c98bff', '#ff8f9d', '#7e90ff']
 
@@ -85,6 +86,7 @@ function getProfitLabel(value) {
 function getTagLabel(tag) {
   if (tag === 'normal') return '正常执行'
   if (tag === 'underweight') return '主动低配'
+  if (tag === 'rebalance') return '再平衡'
   if (tag === 'paused') return '本期暂停'
   return tag || '未标记'
 }
@@ -92,8 +94,15 @@ function getTagLabel(tag) {
 function getTagBadgeClass(tag) {
   if (tag === 'normal') return 'badge-info'
   if (tag === 'underweight') return 'badge-warning'
+  if (tag === 'rebalance') return 'badge-positive'
   if (tag === 'paused') return 'badge-neutral'
   return 'badge-neutral'
+}
+
+function getRecordStageLabel(record) {
+  return record?.tag === 'rebalance'
+    ? `R${Number(record.periodIndex) + 1}`
+    : `P${Number(record?.periodIndex) + 1}`
 }
 
 function getProgressToneClass(ratio) {
@@ -118,12 +127,12 @@ function MetaTile({ label, value, detail, mono = false }) {
   )
 }
 
-function MetricCard({ label, value, meta, tone = 'text-white' }) {
+function MetricCard({ label, value, meta, tone = 'text-white', mono = true }) {
   return (
     <article className="subtle-panel dashboard-metric-card p-5">
       <div className="min-w-0">
         <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-        <p className={`mt-4 data-value text-[1.65rem] font-semibold tracking-[-0.03em] ${tone}`}>{value}</p>
+        <p className={`mt-4 text-[1.65rem] font-semibold tracking-[-0.03em] ${mono ? 'data-value' : 'font-sans'} ${tone}`}>{value}</p>
       </div>
       <div className="mt-3 text-sm leading-6 text-muted-foreground">{meta}</div>
     </article>
@@ -190,7 +199,13 @@ export default function Dashboard({ plan, records, onNavigate }) {
   const planRecords = records
     .filter((record) => record.planId === plan.id)
     .slice()
-    .sort((left, right) => left.periodIndex - right.periodIndex)
+    .sort((left, right) => {
+      if (left.periodIndex !== right.periodIndex) {
+        return left.periodIndex - right.periodIndex
+      }
+
+      return String(left.date || '').localeCompare(String(right.date || ''))
+    })
 
   if (!planRecords.length) {
     return (
@@ -217,6 +232,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
 
   const latestRecord = planRecords[planRecords.length - 1]
   const latestDate = latestRecord.date.slice(0, 10)
+  const nextSuggestedDate = getNextSuggestedOperationDate(plan, records)
   const strategyLabel = plan.strategy === 'VA' ? 'VA 定投' : 'DCA 定投'
   const frequencyLabel = plan.frequency === 'biweekly' ? '双周' : '每月'
   const latestTagLabel = getTagLabel(latestRecord.tag)
@@ -245,7 +261,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
     const netResult = marketValueAtClose - cumulativeInvested
 
     return {
-      label: `P${record.periodIndex + 1}`,
+      label: getRecordStageLabel(record),
       marketValue: marketValueAtClose,
       cumulativeInvested,
       periodAmount,
@@ -254,7 +270,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
   })
 
   const fundingData = planRecords.map((record) => ({
-    label: `P${record.periodIndex + 1}`,
+    label: getRecordStageLabel(record),
     amount: Number(record.totalActualAmount) || 0,
     cumulative: Number(record.cumulativeInvested) || 0,
   }))
@@ -339,6 +355,12 @@ export default function Dashboard({ plan, records, onNavigate }) {
       mono: true,
     },
     {
+      label: '建议下次定投',
+      value: nextSuggestedDate || '--',
+      detail: plan.frequency === 'biweekly' ? '按双周频率顺延' : '按月度频率顺延',
+      mono: true,
+    },
+    {
       label: '计划状态',
       value: isOpenEnded ? '持续投入中' : `剩余 ${Math.max((Number(plan.totalPeriods) || 0) - plan.currentPeriod, 0)} 期`,
       detail: isOpenEnded ? '无固定终点' : '按预算推进',
@@ -371,6 +393,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
         ? <>最新记录日期 <span className="data-subtle">{latestDate}</span>。</>
         : <>保留底仓 <span className="data-subtle">{formatMoney(reserveFloor)}</span>，仍可动用 <span className="data-subtle">{formatMoney(drawableBudget)}</span>。</>,
       tone: 'text-white',
+      mono: !isOpenEnded,
     },
   ]
 
@@ -386,7 +409,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               {summaryMeta.map((item) => (
                 <MetaTile
                   key={item.label}
@@ -633,7 +656,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <p className="label">当前聚焦</p>
-                    <p className="mt-3 data-value text-[1.35rem] font-semibold">{activeWeight.name}</p>
+                    <p className="mt-3 font-sans text-[1.35rem] font-semibold text-white">{activeWeight.name}</p>
                     <p className="mt-2 data-subtle text-sm">{activeWeight.actualWeight}%</p>
                     <p className="mt-2 data-subtle text-sm">{formatMoney(activeWeight.value)}</p>
                   </div>
@@ -657,7 +680,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: asset.color }} />
-                      <span className="data-value text-sm">{asset.name}</span>
+                      <span className="font-sans text-sm font-medium text-white">{asset.name}</span>
                     </div>
                     <span className="data-subtle text-sm">{asset.actualWeight}%</span>
                   </div>
@@ -743,7 +766,7 @@ export default function Dashboard({ plan, records, onNavigate }) {
                   className="grid grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)] items-center gap-3 px-4 py-3 text-sm"
                 >
                   <div>
-                    <p className="data-value text-sm">{asset.name}</p>
+                    <p className="font-sans text-sm font-medium text-white">{asset.name}</p>
                     <p className="mt-1 data-subtle text-xs">{asset.shares} 股</p>
                   </div>
                   <div>

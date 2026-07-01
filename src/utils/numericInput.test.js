@@ -18,6 +18,11 @@ describe('numericInput helpers', () => {
     expect(normalizeNumericInput('12.3456')).toBe('12.34')
   })
 
+  it('supports negative decimal input when enabled', () => {
+    expect(normalizeNumericInput('-12.3456', { allowNegative: true })).toBe('-12.34')
+    expect(formatNumericInput('-12.50', { allowNegative: true })).toBe('-12.5')
+  })
+
   it('supports integer-only normalization', () => {
     expect(normalizeNumericInput('007', { integerOnly: true })).toBe('7')
   })
