@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3.0 - 2026-07-01
+## 2.0.0 - 2026-07-01
 
 ### Added
 - Added light and dark theme support with a persistent theme toggle.
