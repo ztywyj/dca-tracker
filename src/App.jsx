@@ -4,6 +4,7 @@ import { getPeriodicAmount, getSuggestedShares as getDcaSuggestedShares } from '
 import { calcAllTargets, getRequiredInvestment, getSuggestedShares as getVaSuggestedShares } from './utils/vaCalc'
 import { usePlan } from './hooks/usePlan'
 import { useRecords } from './hooks/useRecords'
+import useTheme from './hooks/useTheme'
 import { clearAll } from './utils/storage'
 import { getRemainingDeployableBudget } from './utils/budget'
 
@@ -193,6 +194,7 @@ function rebuildStateAfterRecordEdit(plan, records, updatedRecord) {
 export default function App() {
   const { plan, plans, activePlanId, setActivePlan, replacePlan, resetPlan } = usePlan()
   const { records, addRecord, replaceRecords } = useRecords()
+  const { theme, toggleTheme } = useTheme()
   const [activeTab, setActiveTab] = useState('dashboard')
 
   const Screen = useMemo(() => tabs[activeTab], [activeTab])
@@ -255,6 +257,8 @@ export default function App() {
       plans={plans}
       activePlanId={activePlanId || ''}
       onChangeActivePlan={setActivePlan}
+      theme={theme}
+      onToggleTheme={toggleTheme}
     >
       <Suspense fallback={<ScreenFallback />}>
         <Screen

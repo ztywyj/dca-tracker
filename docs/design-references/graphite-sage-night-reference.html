@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Graphite + Sage Night Reference</title>
+  <style>
+    :root {
+      --bg: #0d1310;
+      --panel: #151c17;
+      --panel-2: #1b241e;
+      --line: rgba(230, 239, 228, 0.09);
+      --text: #edf4ea;
+      --soft: #b8c5b7;
+      --muted: #778373;
+      --sage: #a9c46a;
+      --sage-2: #7fa35a;
+      --sage-deep: #28391f;
+      --teal: #6bb7a3;
+      --warning: #d5a65e;
+      --negative: #d66e7c;
+      font-family: "Aptos", "SF Pro Display", "PingFang SC", system-ui, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 78% 9%, rgba(169, 196, 106, 0.14), transparent 30rem),
+        radial-gradient(circle at 35% 94%, rgba(107, 183, 163, 0.1), transparent 28rem),
+        linear-gradient(135deg, #0b100e 0%, var(--bg) 54%, #101711 100%);
+      color: var(--text);
+    }
+
+    .frame {
+      width: 1440px;
+      height: 980px;
+      margin: 0 auto;
+      padding: 36px;
+      display: grid;
+      grid-template-columns: 244px 1fr;
+      gap: 28px;
+    }
+
+    .sidebar,
+    .card,
+    .stat,
+    .chart-card {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(21, 28, 23, 0.92), rgba(19, 26, 21, 0.76));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.035),
+        0 22px 60px rgba(0, 0, 0, 0.24);
+    }
+
+    .sidebar {
+      border-radius: 10px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: rgba(169, 196, 106, 0.16);
+      border: 1px solid rgba(169, 196, 106, 0.3);
+      color: var(--sage);
+      font: 800 13px/1 "IBM Plex Mono", monospace;
+    }
+
+    .brand p,
+    .eyebrow,
+    .label {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+
+    .brand h1 {
+      margin: 4px 0 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .nav {
+      display: grid;
+      gap: 10px;
+      margin-top: 42px;
+    }
+
+    .nav-item {
+      height: 48px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 14px;
+      color: var(--soft);
+      font-size: 14px;
+    }
+
+    .nav-item.active {
+      background: rgba(169, 196, 106, 0.16);
+      border: 1px solid rgba(169, 196, 106, 0.26);
+      color: var(--text);
+    }
+
+    .glyph {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      border: 1px solid currentColor;
+      opacity: 0.84;
+    }
+
+    .side-bottom {
+      margin-top: auto;
+      display: grid;
+      gap: 12px;
+    }
+
+    .plan-chip,
+    .theme-chip {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .plan-chip strong,
+    .theme-chip strong {
+      display: block;
+      margin-top: 7px;
+      font-size: 14px;
+    }
+
+    .main {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: end;
+    }
+
+    .top h2 {
+      margin: 12px 0 0;
+      font-size: 48px;
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .top p.copy {
+      width: 430px;
+      margin: 0;
+      color: var(--soft);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.36fr 0.64fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .card {
+      border-radius: 10px;
+      padding: 24px;
+    }
+
+    .hero-card {
+      min-height: 294px;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+    }
+
+    .big-number {
+      margin: 34px 0 0;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 76px;
+      line-height: 0.92;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+    }
+
+    .positive {
+      color: var(--sage);
+    }
+
+    .summary-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 38px;
+    }
+
+    .mini {
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid var(--line);
+    }
+
+    .mini strong,
+    .stat strong {
+      display: block;
+      margin-top: 9px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 18px;
+      white-space: nowrap;
+    }
+
+    .orbital {
+      position: relative;
+      min-height: 100%;
+      border-radius: 10px;
+      background:
+        linear-gradient(180deg, rgba(169, 196, 106, 0.13), rgba(127, 163, 90, 0.04)),
+        rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(169, 196, 106, 0.16);
+      overflow: hidden;
+    }
+
+    .ring {
+      position: absolute;
+      inset: 44px;
+      border-radius: 999px;
+      border: 24px solid rgba(169, 196, 106, 0.16);
+    }
+
+    .ring::after {
+      content: "";
+      position: absolute;
+      inset: -24px;
+      border-radius: inherit;
+      border: 24px solid transparent;
+      border-top-color: var(--sage);
+      border-right-color: var(--teal);
+      transform: rotate(24deg);
+    }
+
+    .ring-label {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+
+    .ring-label strong {
+      display: block;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 34px;
+    }
+
+    .action-card {
+      display: grid;
+      align-content: space-between;
+      min-height: 294px;
+      background:
+        linear-gradient(180deg, rgba(169, 196, 106, 0.18), rgba(21, 28, 23, 0.72));
+    }
+
+    .button {
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: var(--sage);
+      color: #10160f;
+      font-weight: 850;
+      box-shadow: 0 16px 38px rgba(169, 196, 106, 0.16);
+    }
+
+    .lower {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      min-height: 0;
+    }
+
+    .chart-card {
+      border-radius: 10px;
+      padding: 22px;
+      min-width: 0;
+    }
+
+    .bars {
+      height: 250px;
+      display: flex;
+      align-items: end;
+      gap: 14px;
+      padding-top: 24px;
+    }
+
+    .bar {
+      flex: 1;
+      border-radius: 8px 8px 3px 3px;
+      background: linear-gradient(180deg, var(--sage), rgba(169, 196, 106, 0.1));
+      min-height: 34px;
+    }
+
+    .line {
+      height: 250px;
+      margin-top: 24px;
+      border-radius: 10px;
+      background:
+        linear-gradient(135deg, transparent 0 46%, rgba(169, 196, 106, 0.38) 46% 48%, transparent 48%),
+        linear-gradient(22deg, transparent 0 57%, rgba(107, 183, 163, 0.36) 57% 59%, transparent 59%),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 50px),
+        rgba(255, 255, 255, 0.025);
+      border: 1px solid var(--line);
+    }
+
+    .palette {
+      position: absolute;
+      right: 36px;
+      bottom: 28px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .swatch {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark">DC</div>
+        <div>
+          <p>Personal Console</p>
+          <h1>DCA Tracker</h1>
+        </div>
+      </div>
+      <nav class="nav">
+        <div class="nav-item active"><span class="glyph"></span>总览</div>
+        <div class="nav-item"><span class="glyph"></span>本期操作</div>
+        <div class="nav-item"><span class="glyph"></span>历史</div>
+        <div class="nav-item"><span class="glyph"></span>设置</div>
+      </nav>
+      <div class="side-bottom">
+        <div class="plan-chip">
+          <p class="label">Current Plan</p>
+          <strong>Long-term VA Portfolio</strong>
+        </div>
+        <div class="theme-chip">
+          <p class="label">Night Accent</p>
+          <strong>Graphite + Sage</strong>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="top">
+        <div>
+          <p class="eyebrow">Reference Direction</p>
+          <h2>Graphite + Sage</h2>
+        </div>
+        <p class="copy">A calmer night palette for an investment console: still green, but muted, mature, and less fluorescent than lime.</p>
+      </section>
+
+      <section class="hero-grid">
+        <article class="card hero-card">
+          <div>
+            <p class="label">Portfolio Value</p>
+            <div class="big-number">$48,260</div>
+            <div class="summary-row">
+              <div class="mini"><p class="label">Invested</p><strong>$32,400</strong></div>
+              <div class="mini"><p class="label">P/L</p><strong class="positive">+$15,860</strong></div>
+              <div class="mini"><p class="label">Budget</p><strong>64%</strong></div>
+            </div>
+          </div>
+          <div class="orbital">
+            <div class="ring"></div>
+            <div class="ring-label">
+              <div>
+                <p class="label">Allocation</p>
+                <strong>72%</strong>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card action-card">
+          <div>
+            <p class="label">Next Action</p>
+            <h3>第 12 期执行</h3>
+            <p style="color:var(--soft);line-height:1.65">确认价格，录入实际买入股数，然后写入历史。</p>
+          </div>
+          <div class="button">进入本期操作</div>
+        </article>
+      </section>
+
+      <section class="lower">
+        <article class="chart-card">
+          <p class="label">Funding Rhythm</p>
+          <div class="bars">
+            <div class="bar" style="height:42%"></div>
+            <div class="bar" style="height:64%"></div>
+            <div class="bar" style="height:50%"></div>
+            <div class="bar" style="height:78%"></div>
+            <div class="bar" style="height:57%"></div>
+            <div class="bar" style="height:88%"></div>
+            <div class="bar" style="height:71%"></div>
+          </div>
+        </article>
+        <article class="chart-card">
+          <p class="label">Capital Progress</p>
+          <div class="line"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div class="palette">
+    <span>#0D1310</span>
+    <span class="swatch" style="background:#0d1310"></span>
+    <span class="swatch" style="background:#151c17"></span>
+    <span class="swatch" style="background:#a9c46a"></span>
+    <span class="swatch" style="background:#7fa35a"></span>
+    <span class="swatch" style="background:#6bb7a3"></span>
+  </div>
+</body>
+</html>

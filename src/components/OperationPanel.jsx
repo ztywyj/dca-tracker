@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, LoaderCircle, RefreshCcw } from 'lucide-react'
+import { CalendarDays, CheckCircle2, LoaderCircle, RefreshCcw } from 'lucide-react'
 import { formatNumericInput, normalizeNumericInput, toNumberOrFallback } from '../utils/numericInput'
 import { getPeriodicAmount, getSuggestedShares as getDcaSuggestedShares } from '../utils/dcaCalc'
 import {
@@ -38,6 +38,14 @@ function formatPriceDisplay(value) {
 
 function getDecisionButtonClass(active) {
   return active ? 'filter-chip filter-chip-active justify-center' : 'filter-chip justify-center'
+}
+
+export function getActualSharesForDecision({ tag, hasManualActualShares, actualSharesInput, suggestedShares }) {
+  if (tag === 'paused') {
+    return 0
+  }
+
+  return hasManualActualShares ? roundToTwo(toNumberOrFallback(actualSharesInput, 0)) : roundToTwo(suggestedShares)
 }
 
 export default function OperationPanel({ plan, records, onSaveRecord, onNavigate }) {
@@ -112,7 +120,12 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
       ? getVaSuggestedShares(requiredAmount, price)
       : getDcaSuggestedShares(requiredAmount, price)
     const hasManualActualShares = state.actualShares !== null && state.actualShares !== undefined
-    const actualShares = hasManualActualShares ? roundToTwo(toNumberOrFallback(state.actualShares, 0)) : roundToTwo(suggestedShares)
+    const actualShares = getActualSharesForDecision({
+      tag,
+      hasManualActualShares,
+      actualSharesInput: state.actualShares,
+      suggestedShares,
+    })
     const actualAmount = roundToTwo(actualShares * price)
 
     return {
@@ -124,7 +137,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
       suggestedShares,
       suggestedSharesDisplay: formatNumericInput(suggestedShares),
       actualSharesInput: state.actualShares,
-      actualSharesDisplay: hasManualActualShares ? state.actualShares : formatNumericInput(suggestedShares),
+      actualSharesDisplay: tag === 'paused' ? '0' : hasManualActualShares ? state.actualShares : formatNumericInput(suggestedShares),
       hasManualActualShares,
       actualShares,
       actualAmount,
@@ -213,7 +226,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
 
   return (
     <section className="section-shell">
-      <div className="section-card">
+      <div className="card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="label">Execution Workspace</p>
@@ -225,7 +238,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                   : `第 ${currentPeriod + 1} 期 / 共 ${totalPeriods} 期`}
             </h2>
             <p className="muted-copy mt-3 max-w-2xl">
-              先确认价格来源，再写入实际股数。页面会用统一的控制台视图展示目标、建议与最终执行金额。
+              先确认价格来源，再写入实际股数。每张标的卡都会同步展示目标、建议与最终执行金额。
             </p>
           </div>
 
@@ -254,7 +267,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
           </button>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-4">
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div className="surface-stat">
             <p className="mini-kicker">计划策略</p>
             <p className="mt-3 text-base font-medium text-white">{plan.strategy}</p>
@@ -280,28 +293,39 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        {currentAssets.map((asset, index) => {
-          const isOddLastCard = currentAssets.length % 2 === 1 && index === currentAssets.length - 1
+      <div className="grid gap-5">
+        {currentAssets.map((asset) => {
           return (
             <article
               key={asset.ticker}
-              className={`operation-asset-card w-full p-5 ${isOddLastCard ? 'xl:col-span-2 xl:max-w-[calc((100%-1.25rem)/2)] xl:justify-self-center' : ''}`}
+              className="operation-asset-card w-full p-5"
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-3">
                     <h3 className="data-value text-[1.5rem] font-semibold tracking-[-0.03em]">{asset.ticker}</h3>
                     <span className="operation-weight-chip">{Math.round((Number(asset.weight) || 0) * 100)}%</span>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">{asset.name}</p>
                 </div>
+                <span className={asset.priceSource === 'auto' ? 'operation-status-pill operation-status-pill-auto' : 'operation-status-pill operation-status-pill-manual'}>
+                  {asset.priceSource === 'auto' ? '自动价格' : '手动价格'}
+                </span>
               </div>
 
-              <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.18fr)_minmax(280px,0.82fr)]">
+              <div className="operation-input-grid mt-6">
                 <div className="subtle-panel flex h-full flex-col p-4">
-                  <p className="mini-kicker">价格输入</p>
-                  <div className="mt-4 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="mini-kicker">价格输入</p>
+                    {asset.loading ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <LoaderCircle size={13} className="animate-spin" />
+                        获取中
+                      </span>
+                    ) : null}
+                  </div>
+                  <label className="mt-4 flex-1">
+                    <span className="sr-only">{asset.ticker} 操作价格</span>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -320,9 +344,9 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                       }}
                       className="operation-field operation-price-field financial-input"
                     />
-                  </div>
+                  </label>
                   <div className="mt-4 subtle-row operation-footer-row">
-                    <span className="text-sm text-muted-foreground">可手动输入</span>
+                    <span className="operation-footer-label">可手动输入</span>
                     <button
                       type="button"
                       onClick={() => handleAutoFetch(asset.ticker)}
@@ -330,17 +354,18 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                       className="operation-action-button"
                     >
                       {asset.loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCcw size={14} />}
-                      {asset.loading ? '获取中...' : '自动获取价格'}
+                      {asset.loading ? '获取中…' : '自动获取价格'}
                     </button>
                   </div>
                   {asset.fetchError ? (
-                    <p className="mt-3 text-xs leading-5 text-negative">{asset.fetchError}</p>
+                    <p className="mt-3 rounded-md border border-negative/25 bg-negative/10 px-3 py-2 text-xs leading-5 text-negative">{asset.fetchError}</p>
                   ) : null}
                 </div>
 
                 <div className="subtle-panel flex h-full flex-col p-4">
                   <p className="mini-kicker">实际买入股数</p>
-                  <div className="mt-4 flex-1">
+                  <label className="mt-4 flex-1">
+                    <span className="sr-only">{asset.ticker} 实际买入股数</span>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -364,7 +389,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                       }}
                       className="operation-field operation-share-field financial-input"
                     />
-                  </div>
+                  </label>
                   <div className="mt-4 subtle-row operation-footer-row">
                     <span className="operation-footer-label">实际投入金额</span>
                     <span className="operation-footer-value">{formatMoney(asset.actualAmount)}</span>
@@ -372,7 +397,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="operation-metrics-grid mt-5">
                 <div className="operation-metric-card p-4">
                   <p className="operation-metric-label">当前持仓价值</p>
                   <p className="operation-metric-value">{formatMoney(asset.currentValueBefore)}</p>
@@ -401,74 +426,88 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
         })}
       </div>
 
-      <div className="section-card">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+      <div className="card p-5">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.42fr)]">
+          <div className="min-w-0">
             <p className="label">Decision & Commit</p>
             <h3 className="section-title">确认本期执行</h3>
             <p className="muted-copy mt-3">先标记本期执行决策，再补充备注，最后把整期记录写入历史。</p>
-          </div>
-        </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          {decisionOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setTag(option.value)}
-              className={getDecisionButtonClass(tag === option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        <label className="mt-5 block space-y-2">
-          <span className="text-sm text-muted-foreground">备注</span>
-          <textarea
-            rows="4"
-            value={note}
-            placeholder="记录你这期的判断..."
-            onChange={(event) => setNote(event.target.value)}
-            className="surface-textarea"
-          />
-        </label>
-
-        <div className={`mt-5 grid gap-3 ${isOpenEnded ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
-          <div className="surface-stat">
-            <p className="mini-kicker">本期实际投入</p>
-            <p className="mt-3 data-value text-xl">{formatMoney(totalActualAmount)}</p>
-          </div>
-          <div className="surface-stat">
-            <p className="mini-kicker">累计投入</p>
-            <p className="mt-3 data-value text-xl">{formatMoney(cumulativeInvested)}</p>
-          </div>
-          {!isOpenEnded ? (
-            <div className="surface-stat">
-              <p className="mini-kicker">剩余可投</p>
-              <p className="mt-3 data-value text-xl">{formatMoney(remainingBudget)}</p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {decisionOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setTag(option.value)}
+                  className={getDecisionButtonClass(tag === option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
-          ) : null}
+
+            <label className="mt-5 block space-y-2">
+              <span className="text-sm text-muted-foreground">备注</span>
+              <textarea
+                rows="4"
+                value={note}
+                placeholder="记录你这期的判断…"
+                onChange={(event) => setNote(event.target.value)}
+                className="surface-textarea"
+              />
+            </label>
+          </div>
+
+          <aside className="subtle-panel h-fit p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="mini-kicker">提交检查</p>
+              <span className={isReadyToConfirm ? 'badge-positive' : 'badge-neutral'}>
+                {isReadyToConfirm ? 'Ready' : 'Pending'}
+              </span>
+            </div>
+
+            <div className={`mt-4 grid gap-3 ${isOpenEnded ? '' : 'sm:grid-cols-3 xl:grid-cols-1'}`}>
+              <div className="surface-stat">
+                <p className="mini-kicker">本期实际投入</p>
+                <p className="mt-3 data-value text-xl">{formatMoney(totalActualAmount)}</p>
+              </div>
+              <div className="surface-stat">
+                <p className="mini-kicker">累计投入</p>
+                <p className="mt-3 data-value text-xl">{formatMoney(cumulativeInvested)}</p>
+              </div>
+              {!isOpenEnded ? (
+                <div className="surface-stat">
+                  <p className="mini-kicker">剩余可投</p>
+                  <p className="mt-3 data-value text-xl">{formatMoney(remainingBudget)}</p>
+                </div>
+              ) : null}
+            </div>
+
+            {isPlanComplete ? (
+              <p className="mt-4 rounded-md border border-warning/25 bg-warning/10 px-3 py-2 text-sm leading-6 text-warning">
+                固定期数计划已完成。如需继续执行，请先到设置页增加总期数或填写新计划。
+              </p>
+            ) : !isReadyToConfirm ? (
+              <p className="mt-4 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm leading-6 text-muted-foreground">
+                先为全部标的填入价格，并等待自动获取完成后，再确认写入历史。
+              </p>
+            ) : (
+              <p className="mt-4 rounded-md border border-positive/25 bg-positive/10 px-3 py-2 text-sm leading-6 text-positive">
+                <CheckCircle2 size={15} className="mr-1 inline" />
+                所有价格已就绪，可以写入历史。
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={!isReadyToConfirm}
+              className="control-button-primary mt-5 w-full"
+            >
+              确认记录本期操作
+            </button>
+          </aside>
         </div>
-
-        {isPlanComplete ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            固定期数计划已完成。如需继续执行，请先到设置页增加总期数或填写新计划。
-          </p>
-        ) : !isReadyToConfirm ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            先为全部标的填入价格，并等待自动获取完成后，再确认写入历史。
-          </p>
-        ) : null}
-
-        <button
-          type="button"
-          onClick={handleConfirm}
-          disabled={!isReadyToConfirm}
-          className="control-button-primary mt-5 w-full"
-        >
-          确认记录本期操作
-        </button>
       </div>
     </section>
   )

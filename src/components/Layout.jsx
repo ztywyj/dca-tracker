@@ -1,115 +1,158 @@
-import { useEffect, useRef, useState } from 'react'
-import { BarChart3, History as HistoryIcon, Settings as SettingsIcon, WalletCards } from 'lucide-react'
+import {
+  BarChart3,
+  History as HistoryIcon,
+  Moon,
+  Settings as SettingsIcon,
+  SunMedium,
+  WalletCards,
+} from 'lucide-react'
 
 const navItems = [
-  { key: 'dashboard', label: '总览', icon: BarChart3 },
-  { key: 'operation', label: '本期操作', icon: WalletCards },
-  { key: 'history', label: '历史', icon: HistoryIcon },
-  { key: 'settings', label: '设置', icon: SettingsIcon },
+  { key: 'dashboard', label: '总览', title: 'Dashboard', icon: BarChart3 },
+  { key: 'operation', label: '本期操作', title: 'Operation', icon: WalletCards },
+  { key: 'history', label: '历史', title: 'History', icon: HistoryIcon },
+  { key: 'settings', label: '设置', title: 'Settings', icon: SettingsIcon },
 ]
 
-export default function Layout({ activeTab, onChangeTab, children, plans = [], activePlanId = '', onChangeActivePlan }) {
+function PlanSelector({ plans, activePlanId, onChangeActivePlan, compact = false }) {
   const hasPlans = Array.isArray(plans) && plans.length > 0
-  const scrollAreaRef = useRef(null)
-  const lastScrollTopRef = useRef(0)
-  const frameRef = useRef(0)
-  const [isChromeCompact, setIsChromeCompact] = useState(false)
 
-  const handleScroll = () => {
-    if (frameRef.current) return
-
-    frameRef.current = window.requestAnimationFrame(() => {
-      frameRef.current = 0
-
-      const nextScrollTop = scrollAreaRef.current?.scrollTop || 0
-      const lastScrollTop = lastScrollTopRef.current
-      const delta = nextScrollTop - lastScrollTop
-
-      if (nextScrollTop <= 16) {
-        setIsChromeCompact(false)
-      } else if (delta > 8 && nextScrollTop > 40) {
-        setIsChromeCompact(true)
-      } else if (delta < -8) {
-        setIsChromeCompact(false)
-      }
-
-      lastScrollTopRef.current = nextScrollTop
-    })
+  if (!hasPlans) {
+    return (
+      <div className={compact ? 'shell-plan-empty shell-plan-empty-compact' : 'shell-plan-empty'}>
+        <span>暂无计划</span>
+      </div>
+    )
   }
 
-  useEffect(() => {
-    setIsChromeCompact(false)
-    lastScrollTopRef.current = scrollAreaRef.current?.scrollTop || 0
-  }, [activeTab])
+  return (
+    <label className={compact ? 'shell-plan shell-plan-compact' : 'shell-plan'}>
+      <span>当前计划</span>
+      <select
+        aria-label="切换当前计划"
+        value={activePlanId}
+        onChange={(event) => onChangeActivePlan?.(event.target.value)}
+      >
+        {plans.map((plan) => (
+          <option key={plan.id} value={plan.id}>
+            {plan.name || '未命名计划'}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
 
-  useEffect(() => () => {
-    if (frameRef.current) {
-      window.cancelAnimationFrame(frameRef.current)
-    }
-  }, [])
+function ThemeButton({ theme, onToggleTheme, compact = false }) {
+  const isDark = theme === 'dark'
+  const Icon = isDark ? Moon : SunMedium
+  const nextThemeLabel = isDark ? '切换到日间主题' : '切换到夜间主题'
 
   return (
-    <div id="root-layout" className="app-shell bg-radial text-white" data-chrome-compact={isChromeCompact ? 'true' : 'false'}>
-      <div ref={scrollAreaRef} className="app-scroll-area" onScroll={handleScroll}>
-        <header className="topbar-shell sticky top-0 z-40 border-b border-white/[0.06]">
-          <div className="topbar-content mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
-            <div className="topbar-row flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="topbar-brand min-w-0">
-                <p className="topbar-label label">个人定投面板</p>
-                <h1 className="topbar-title mt-2 font-sans text-2xl font-semibold tracking-[-0.03em] text-white sm:text-[1.95rem]">
-                  DCA Tracker
-                </h1>
-              </div>
+    <button
+      type="button"
+      aria-label={nextThemeLabel}
+      title={nextThemeLabel}
+      onClick={onToggleTheme}
+      className={compact ? 'theme-toggle theme-toggle-compact' : 'theme-toggle'}
+    >
+      <Icon size={17} aria-hidden="true" />
+      <span>{isDark ? '夜间' : '日间'}</span>
+    </button>
+  )
+}
 
-              {hasPlans ? (
-                <div className="topbar-plan flex min-w-0 flex-col gap-2 lg:min-w-[19rem]">
-                  <label htmlFor="active-plan-select" className="topbar-plan-label text-xs uppercase tracking-[0.18em] text-muted">
-                    当前计划
-                  </label>
-                  <select
-                    id="active-plan-select"
-                    aria-label="切换当前计划"
-                    value={activePlanId}
-                    onChange={(event) => onChangeActivePlan?.(event.target.value)}
-                    className="topbar-select data-value"
-                  >
-                    {plans.map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.name || '未命名计划'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-            </div>
+function NavButton({ item, active, onChangeTab, mobile = false }) {
+  const Icon = item.icon
+
+  return (
+    <button
+      type="button"
+      onClick={() => onChangeTab(item.key)}
+      aria-current={active ? 'page' : undefined}
+      className={mobile ? `mobile-nav-button ${active ? 'mobile-nav-button-active' : ''}` : `sidebar-nav-button ${active ? 'sidebar-nav-button-active' : ''}`}
+    >
+      <Icon size={mobile ? 18 : 17} aria-hidden="true" />
+      <span>{item.label}</span>
+    </button>
+  )
+}
+
+export default function Layout({
+  activeTab,
+  onChangeTab,
+  children,
+  plans = [],
+  activePlanId = '',
+  onChangeActivePlan,
+  theme = 'dark',
+  onToggleTheme,
+}) {
+  const activeItem = navItems.find((item) => item.key === activeTab) || navItems[0]
+
+  return (
+    <div id="root-layout" className="app-shell bg-radial text-white" data-theme={theme}>
+      <aside className="desktop-sidebar" aria-label="主导航">
+        <div className="sidebar-brand">
+          <div className="brand-mark">DC</div>
+          <div className="min-w-0">
+            <p>Personal Console</p>
+            <h1>DCA Tracker</h1>
           </div>
-        </header>
+        </div>
 
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-          <main className="min-w-0">{children}</main>
+        <nav className="sidebar-nav" aria-label="页面">
+          {navItems.map((item) => (
+            <NavButton
+              key={item.key}
+              item={item}
+              active={item.key === activeTab}
+              onChangeTab={onChangeTab}
+            />
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <PlanSelector
+            plans={plans}
+            activePlanId={activePlanId}
+            onChangeActivePlan={onChangeActivePlan}
+          />
+          <ThemeButton theme={theme} onToggleTheme={onToggleTheme} />
+        </div>
+      </aside>
+
+      <div className="mobile-topbar">
+        <div className="min-w-0">
+          <p className="mobile-page-kicker">{activeItem.title}</p>
+          <h1 className="mobile-page-title">{activeItem.label}</h1>
+        </div>
+        <div className="mobile-topbar-actions">
+          <PlanSelector
+            plans={plans}
+            activePlanId={activePlanId}
+            onChangeActivePlan={onChangeActivePlan}
+            compact
+          />
+          <ThemeButton theme={theme} onToggleTheme={onToggleTheme} compact />
         </div>
       </div>
 
-      <nav className="tab-bar-shell border-t border-white/[0.06] bg-surface/90 backdrop-blur-xl">
-        <div className="mx-auto grid h-[60px] max-w-3xl grid-cols-4 gap-1 px-2 sm:gap-2 sm:px-3">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const active = item.key === activeTab
+      <div className="app-scroll-area">
+        <main className="app-content">{children}</main>
+      </div>
 
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => onChangeTab(item.key)}
-                className={`tab-bar-button flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 transition sm:px-3 ${
-                  active ? 'border border-accent/18 bg-accent/10 text-slate-100 shadow-none' : 'border border-transparent text-muted hover:border-line/80 hover:bg-elevated/70 hover:text-white'
-                }`}
-              >
-                <Icon className="tab-bar-icon" size={18} />
-                <span className="tab-bar-label text-[11px] font-medium sm:text-xs">{item.label}</span>
-              </button>
-            )
-          })}
+      <nav className="mobile-tabbar" aria-label="底部导航">
+        <div className="mobile-tabbar-grid">
+          {navItems.map((item) => (
+            <NavButton
+              key={item.key}
+              item={item}
+              active={item.key === activeTab}
+              onChangeTab={onChangeTab}
+              mobile
+            />
+          ))}
         </div>
       </nav>
     </div>
