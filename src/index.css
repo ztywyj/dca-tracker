@@ -870,7 +870,8 @@ textarea:focus-visible {
   .theme-preview-card {
     align-items: center;
     display: flex;
-    min-height: 5.25rem;
+    justify-content: center;
+    min-height: 5.1rem;
     position: relative;
     transition:
       background-color 180ms ease,

@@ -694,7 +694,7 @@ export default function Settings({
             </div>
           </div>
 
-          {themeOptionGroups.length ? (
+          {false && themeOptionGroups.length ? (
             <div className="subtle-panel p-4">
               <p className="mini-kicker">界面主题</p>
 
@@ -703,7 +703,7 @@ export default function Settings({
                   <div key={group.appearance} className="subtle-panel p-4">
                     <p className="mini-kicker">{group.title}</p>
 
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-4 grid grid-cols-2 gap-3">
                       {group.options.map((option) => {
                         const isSelected = group.selectedTheme === option.value
                         const isCurrent = theme === option.value
@@ -713,29 +713,26 @@ export default function Settings({
                             key={option.value}
                             type="button"
                             onClick={() => onSetTheme?.(option.value)}
-                            className={`theme-preview-card p-4 text-left ${getOptionCardClass(isSelected)}`}
+                            aria-label={option.label}
+                            title={option.label}
+                            className={`theme-preview-card p-4 ${getOptionCardClass(isSelected)}`}
                           >
                             {isCurrent ? (
                               <span className="theme-preview-card-check">
                                 <Check size={12} strokeWidth={3} />
                               </span>
                             ) : null}
-                            <div className="flex items-center gap-3">
-                              <div className="theme-preview-disc" aria-hidden="true">
-                                <span className="theme-preview-grid">
-                                  {getThemePreviewColors(option.preview).map((color, index) => (
-                                    <span
-                                      key={`${option.value}-${color}-${index}`}
-                                      className="theme-preview-cell"
-                                      style={{ backgroundColor: color }}
-                                    />
-                                  ))}
-                                </span>
-                                <span className="theme-preview-core" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-medium text-white">{option.label}</div>
-                              </div>
+                            <div className="theme-preview-disc" aria-hidden="true">
+                              <span className="theme-preview-grid">
+                                {getThemePreviewColors(option.preview).map((color, index) => (
+                                  <span
+                                    key={`${option.value}-${color}-${index}`}
+                                    className="theme-preview-cell"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                ))}
+                              </span>
+                              <span className="theme-preview-core" />
                             </div>
                           </button>
                         )
@@ -861,7 +858,7 @@ export default function Settings({
                       </button>
                     </div>
 
-                    <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_240px_240px]">
+                    <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(168px,0.75fr)_minmax(168px,0.75fr)]">
                       <div>
                         <div className="flex items-center justify-between gap-4">
                           <span className="text-sm text-muted-foreground">权重</span>
@@ -921,7 +918,8 @@ export default function Settings({
         </div>
       </div>
 
-      <aside className="card h-fit p-5 xl:sticky xl:top-5">
+      <div className="grid gap-5">
+        <aside className="card h-fit p-5 xl:sticky xl:top-5">
         <p className="label">Review</p>
         <h3 className="section-title">保存前检查</h3>
 
@@ -1024,7 +1022,9 @@ export default function Settings({
             </button>
           ) : null}
 
-          <button
+          {false ? (
+            <>
+              <button
             type="button"
             onClick={handleClearAll}
             className="control-button-danger w-full"
@@ -1093,8 +1093,143 @@ export default function Settings({
               )}
             </div>
           </div>
+            </>
+          ) : null}
         </div>
       </aside>
+
+      <aside className="card h-fit p-5">
+        <p className="label">Interface</p>
+        <h3 className="section-title">界面与数据</h3>
+
+        <div className="mt-5 grid gap-4">
+          {themeOptionGroups.length ? (
+            <div className="subtle-panel p-4">
+              <p className="mini-kicker">界面主题</p>
+
+              <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                {themeOptionGroups.map((group) => (
+                  <div key={group.appearance} className="subtle-panel p-4">
+                    <p className="mini-kicker">{group.title}</p>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      {group.options.map((option) => {
+                        const isSelected = group.selectedTheme === option.value
+                        const isCurrent = theme === option.value
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => onSetTheme?.(option.value)}
+                            aria-label={option.label}
+                            title={option.label}
+                            className={`theme-preview-card p-4 ${getOptionCardClass(isSelected)}`}
+                          >
+                            {isCurrent ? (
+                              <span className="theme-preview-card-check">
+                                <Check size={12} strokeWidth={3} />
+                              </span>
+                            ) : null}
+                            <div className="theme-preview-disc" aria-hidden="true">
+                              <span className="theme-preview-grid">
+                                {getThemePreviewColors(option.preview).map((color, index) => (
+                                  <span
+                                    key={`${option.value}-${color}-${index}`}
+                                    className="theme-preview-cell"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                ))}
+                              </span>
+                              <span className="theme-preview-core" />
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="subtle-panel p-4">
+            <p className="mini-kicker">其他操作</p>
+            <div className="mt-4 grid gap-3">
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="control-button-danger w-full"
+              >
+                <Trash2 size={18} />
+                清除所有数据
+              </button>
+
+              {authRequired ? (
+                <button
+                  type="button"
+                  onClick={() => onLogout?.()}
+                  className="control-button w-full"
+                >
+                  <LogOut size={18} />
+                  退出验证
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="subtle-panel p-4">
+            <p className="mini-kicker">数据存储</p>
+            <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+              <div className="subtle-row">
+                <span>当前模式</span>
+                <span className="data-subtle">{isServerFileStorage ? '服务端文件存储' : '浏览器 localStorage'}</span>
+              </div>
+              <div className="space-y-2">
+                <span className="block">存储目录</span>
+                <p className="break-all rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-3 font-mono text-xs text-white/88">
+                  {storageMeta?.storageDir || '--'}
+                </p>
+              </div>
+              <div className="subtle-row">
+                <span>自动备份</span>
+                <span className="data-subtle">{isServerFileStorage ? `${storageMeta?.backupCount || 0} 份` : '仅手动导出'}</span>
+              </div>
+              <div className="subtle-row">
+                <span>损坏恢复</span>
+                <span className={storageMeta?.recoveredFromBackup ? 'text-warning' : 'text-positive'}>
+                  {storageMeta?.recoveredFromBackup ? '已切换到最近备份' : '正常'}
+                </span>
+              </div>
+              {isServerFileStorage ? (
+                <>
+                  <div className="space-y-2">
+                    <span className="block">数据文件</span>
+                    <p className="break-all rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-3 font-mono text-xs text-white/88">
+                      {storageMeta?.dataFile || '--'}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <span className="block">备份目录</span>
+                    <p className="break-all rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-3 font-mono text-xs text-white/88">
+                      {storageMeta?.backupDir || '--'}
+                    </p>
+                  </div>
+                  <p className="rounded-2xl border border-positive/30 bg-positive/10 px-3 py-3 text-xs leading-6 text-emerald-200">
+                    当前已切换为服务端文件存储。部署到 Docker 后，可以通过卷挂载决定 NAS 上的实际保存位置，并用 `DATA_DIR`
+                    指定容器内的数据目录；系统会自动保留最近备份，并在主数据文件损坏时恢复。
+                  </p>
+                </>
+              ) : (
+                <p className="rounded-2xl border border-warning/30 bg-warning/10 px-3 py-3 text-xs leading-6 text-amber-200">
+                  当前是浏览器兼容模式，数据仍保存在本机浏览器中。通过 Docker 部署后会自动切换到 NAS 文件存储。
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </aside>
+      </div>
     </section>
   )
 }
