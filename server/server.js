@@ -334,8 +334,10 @@ app.get('/api/quote', requireAuth, async (request, response) => {
   response.status(result.status).json(result.body)
 })
 
-app.use('/assets', express.static(path.join(distDir, 'assets'), { fallthrough: false }))
-app.use('/favicon.ico', express.static(path.join(distDir, 'favicon.ico'), { fallthrough: true }))
+app.use(express.static(distDir, {
+  fallthrough: true,
+  index: false,
+}))
 
 app.use((request, response) => {
   if (request.path.startsWith('/api/')) {
