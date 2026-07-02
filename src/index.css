@@ -41,6 +41,134 @@
   font-kerning: normal;
 }
 
+:root[data-theme='classic-dark'] {
+  --color-surface-rgb: 15 17 23;
+  --color-panel-rgb: 21 25 35;
+  --color-elevated-rgb: 26 31 43;
+  --color-line-rgb: 37 43 56;
+  --color-text-rgb: 238 243 249;
+  --color-text-soft-rgb: 199 208 222;
+  --color-muted-rgb: 127 136 152;
+  --color-muted-foreground-rgb: 152 163 182;
+  --color-accent-rgb: 122 162 255;
+  --color-accent-hover-rgb: 96 165 250;
+  --color-accent-soft-rgb: 48 75 134;
+  --color-positive-rgb: 16 185 129;
+  --color-negative-rgb: 244 63 94;
+  --color-warning-rgb: 245 158 11;
+  --color-info-rgb: 103 166 255;
+  --color-success-soft-rgb: 5 46 36;
+  --color-danger-soft-rgb: 59 16 32;
+  --color-warning-soft-rgb: 58 38 8;
+  --color-info-soft-rgb: 14 41 64;
+  --select-bg: #151923;
+  --shadow-glow: 0 0 0 1px rgba(96, 165, 250, 0.07), 0 12px 24px rgba(2, 6, 18, 0.28);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 36px rgba(3, 6, 14, 0.24);
+  --app-background:
+    radial-gradient(circle at top left, rgba(122, 162, 255, 0.08), transparent 28%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.035), transparent 24%),
+    linear-gradient(180deg, #0f1117 0%, #121620 100%);
+  color: rgb(var(--color-text-rgb));
+  background: rgb(var(--color-surface-rgb));
+  color-scheme: dark;
+}
+
+:root[data-theme='slate-dark'] {
+  --color-surface-rgb: 23 24 29;
+  --color-panel-rgb: 35 37 44;
+  --color-elevated-rgb: 43 45 54;
+  --color-line-rgb: 237 239 246;
+  --color-text-rgb: 237 239 246;
+  --color-text-soft-rgb: 197 201 216;
+  --color-muted-rgb: 129 135 151;
+  --color-muted-foreground-rgb: 178 184 201;
+  --color-accent-rgb: 122 127 227;
+  --color-accent-hover-rgb: 103 109 209;
+  --color-accent-soft-rgb: 45 47 88;
+  --color-positive-rgb: 112 188 146;
+  --color-negative-rgb: 219 114 136;
+  --color-warning-rgb: 214 169 96;
+  --color-info-rgb: 194 208 255;
+  --color-success-soft-rgb: 20 39 31;
+  --color-danger-soft-rgb: 63 27 37;
+  --color-warning-soft-rgb: 61 44 24;
+  --color-info-soft-rgb: 29 37 70;
+  --select-bg: #23252c;
+  --shadow-glow: 0 0 0 1px rgb(var(--color-accent-rgb) / 0.08), 0 16px 36px rgba(12, 13, 18, 0.28);
+  --shadow-card: inset 0 1px 0 rgb(var(--color-text-rgb) / 0.03), 0 18px 40px rgba(11, 12, 18, 0.24);
+  --app-background:
+    radial-gradient(circle at 12% 10%, rgb(var(--color-accent-rgb) / 0.16), transparent 24rem),
+    radial-gradient(circle at 88% 14%, rgb(var(--color-info-rgb) / 0.1), transparent 22rem),
+    linear-gradient(160deg, #16171c 0%, #1c1e24 55%, #252830 100%);
+  color: rgb(var(--color-text-rgb));
+  background: rgb(var(--color-surface-rgb));
+  color-scheme: dark;
+}
+
+:root[data-theme='ocean-dark'] {
+  --color-surface-rgb: 8 18 24;
+  --color-panel-rgb: 13 28 35;
+  --color-elevated-rgb: 18 37 47;
+  --color-line-rgb: 227 240 241;
+  --color-text-rgb: 227 240 241;
+  --color-text-soft-rgb: 173 202 201;
+  --color-muted-rgb: 103 128 132;
+  --color-muted-foreground-rgb: 164 189 189;
+  --color-accent-rgb: 78 194 186;
+  --color-accent-hover-rgb: 53 172 164;
+  --color-accent-soft-rgb: 19 68 63;
+  --color-positive-rgb: 110 209 162;
+  --color-negative-rgb: 231 113 136;
+  --color-warning-rgb: 221 173 89;
+  --color-info-rgb: 87 168 238;
+  --color-success-soft-rgb: 15 48 34;
+  --color-danger-soft-rgb: 63 23 34;
+  --color-warning-soft-rgb: 63 45 20;
+  --color-info-soft-rgb: 15 43 70;
+  --select-bg: #0d1c23;
+  --shadow-glow: 0 0 0 1px rgb(var(--color-accent-rgb) / 0.09), 0 18px 42px rgba(0, 11, 16, 0.28);
+  --shadow-card: inset 0 1px 0 rgb(var(--color-text-rgb) / 0.03), 0 18px 44px rgba(0, 11, 16, 0.24);
+  --app-background:
+    radial-gradient(circle at 84% 14%, rgb(var(--color-accent-rgb) / 0.14), transparent 30rem),
+    radial-gradient(circle at 20% 88%, rgb(var(--color-info-rgb) / 0.1), transparent 26rem),
+    linear-gradient(150deg, #07151c 0%, #0a1c24 52%, #0d2730 100%);
+  color: rgb(var(--color-text-rgb));
+  background: rgb(var(--color-surface-rgb));
+  color-scheme: dark;
+}
+
+:root[data-theme='amber-dark'] {
+  --color-surface-rgb: 24 18 14;
+  --color-panel-rgb: 31 24 19;
+  --color-elevated-rgb: 40 31 25;
+  --color-line-rgb: 243 236 228;
+  --color-text-rgb: 243 236 228;
+  --color-text-soft-rgb: 211 191 171;
+  --color-muted-rgb: 149 129 112;
+  --color-muted-foreground-rgb: 192 174 156;
+  --color-accent-rgb: 215 161 82;
+  --color-accent-hover-rgb: 196 135 49;
+  --color-accent-soft-rgb: 74 49 24;
+  --color-positive-rgb: 146 201 114;
+  --color-negative-rgb: 228 116 128;
+  --color-warning-rgb: 224 171 93;
+  --color-info-rgb: 116 177 222;
+  --color-success-soft-rgb: 29 45 21;
+  --color-danger-soft-rgb: 64 24 31;
+  --color-warning-soft-rgb: 67 45 18;
+  --color-info-soft-rgb: 19 43 59;
+  --select-bg: #1f1813;
+  --shadow-glow: 0 0 0 1px rgb(var(--color-accent-rgb) / 0.08), 0 18px 42px rgba(12, 7, 4, 0.3);
+  --shadow-card: inset 0 1px 0 rgb(var(--color-text-rgb) / 0.03), 0 18px 44px rgba(12, 7, 4, 0.26);
+  --app-background:
+    radial-gradient(circle at 78% 10%, rgb(var(--color-accent-rgb) / 0.14), transparent 28rem),
+    radial-gradient(circle at 22% 84%, rgb(var(--color-info-rgb) / 0.08), transparent 24rem),
+    linear-gradient(155deg, #16100c 0%, #1d1510 52%, #281c14 100%);
+  color: rgb(var(--color-text-rgb));
+  background: rgb(var(--color-surface-rgb));
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     --color-surface-rgb: 246 247 242;
@@ -100,6 +228,126 @@
     radial-gradient(circle at top left, rgb(var(--color-accent-rgb) / 0.12), transparent 28%),
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.75), transparent 24%),
     linear-gradient(180deg, rgb(var(--color-surface-rgb)) 0%, #eef1e7 100%);
+  color-scheme: light;
+}
+
+:root[data-theme='stone-light'] {
+  --color-surface-rgb: 245 243 240;
+  --color-panel-rgb: 255 252 248;
+  --color-elevated-rgb: 236 232 227;
+  --color-line-rgb: 214 208 201;
+  --color-text-rgb: 39 37 34;
+  --color-text-soft-rgb: 81 76 70;
+  --color-muted-rgb: 121 114 106;
+  --color-muted-foreground-rgb: 108 101 93;
+  --color-accent-rgb: 141 117 92;
+  --color-accent-hover-rgb: 117 93 71;
+  --color-accent-soft-rgb: 233 222 210;
+  --color-positive-rgb: 41 130 95;
+  --color-negative-rgb: 186 70 88;
+  --color-warning-rgb: 179 115 36;
+  --color-info-rgb: 73 111 171;
+  --color-success-soft-rgb: 224 242 233;
+  --color-danger-soft-rgb: 252 229 233;
+  --color-warning-soft-rgb: 252 237 214;
+  --color-info-soft-rgb: 229 237 250;
+  --select-bg: #fffaf5;
+  --shadow-glow: 0 0 0 1px rgb(var(--color-accent-rgb) / 0.12), 0 12px 24px rgba(68, 57, 46, 0.09);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 14px 30px rgba(75, 65, 55, 0.08);
+  --app-background:
+    radial-gradient(circle at 12% 8%, rgb(var(--color-accent-rgb) / 0.11), transparent 28%),
+    radial-gradient(circle at 86% 92%, rgb(var(--color-info-rgb) / 0.1), transparent 24%),
+    linear-gradient(180deg, rgb(var(--color-surface-rgb)) 0%, #eee9e2 100%);
+  color-scheme: light;
+}
+
+:root[data-theme='sky-light'] {
+  --color-surface-rgb: 240 246 251;
+  --color-panel-rgb: 252 254 255;
+  --color-elevated-rgb: 229 238 245;
+  --color-line-rgb: 200 214 225;
+  --color-text-rgb: 28 39 52;
+  --color-text-soft-rgb: 69 84 99;
+  --color-muted-rgb: 108 123 138;
+  --color-muted-foreground-rgb: 95 109 124;
+  --color-accent-rgb: 58 132 200;
+  --color-accent-hover-rgb: 39 111 177;
+  --color-accent-soft-rgb: 212 232 247;
+  --color-positive-rgb: 39 140 113;
+  --color-negative-rgb: 198 74 96;
+  --color-warning-rgb: 181 122 34;
+  --color-info-rgb: 58 118 194;
+  --color-success-soft-rgb: 221 244 236;
+  --color-danger-soft-rgb: 253 229 234;
+  --color-warning-soft-rgb: 252 239 215;
+  --color-info-soft-rgb: 223 236 252;
+  --select-bg: #fdfeff;
+  --shadow-glow: 0 0 0 1px rgb(var(--color-accent-rgb) / 0.12), 0 12px 24px rgba(46, 78, 109, 0.09);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 14px 32px rgba(54, 86, 118, 0.08);
+  --app-background:
+    radial-gradient(circle at 16% 10%, rgb(var(--color-accent-rgb) / 0.12), transparent 28%),
+    radial-gradient(circle at 90% 12%, rgba(255, 255, 255, 0.78), transparent 22%),
+    linear-gradient(180deg, rgb(var(--color-surface-rgb)) 0%, #e8f1f7 100%);
+  color-scheme: light;
+}
+
+:root[data-theme='sage-light'] {
+  --color-surface-rgb: 244 247 243;
+  --color-panel-rgb: 252 255 251;
+  --color-elevated-rgb: 233 239 232;
+  --color-line-rgb: 204 214 201;
+  --color-text-rgb: 33 41 35;
+  --color-text-soft-rgb: 69 81 71;
+  --color-muted-rgb: 109 122 110;
+  --color-muted-foreground-rgb: 95 108 96;
+  --color-accent-rgb: 102 147 88;
+  --color-accent-hover-rgb: 78 122 68;
+  --color-accent-soft-rgb: 219 236 212;
+  --color-positive-rgb: 38 136 95;
+  --color-negative-rgb: 193 72 92;
+  --color-warning-rgb: 166 118 38;
+  --color-info-rgb: 68 121 190;
+  --color-success-soft-rgb: 223 243 232;
+  --color-danger-soft-rgb: 252 229 234;
+  --color-warning-soft-rgb: 250 238 214;
+  --color-info-soft-rgb: 223 236 251;
+  --select-bg: #fcfffb;
+  --shadow-glow: 0 0 0 1px rgb(var(--color-accent-rgb) / 0.12), 0 12px 24px rgba(46, 68, 48, 0.09);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 14px 30px rgba(55, 73, 56, 0.08);
+  --app-background:
+    radial-gradient(circle at 14% 10%, rgb(var(--color-accent-rgb) / 0.12), transparent 28%),
+    radial-gradient(circle at 86% 90%, rgb(var(--color-info-rgb) / 0.08), transparent 24%),
+    linear-gradient(180deg, rgb(var(--color-surface-rgb)) 0%, #edf3ea 100%);
+  color-scheme: light;
+}
+
+:root[data-theme='sand-light'] {
+  --color-surface-rgb: 248 244 236;
+  --color-panel-rgb: 255 251 244;
+  --color-elevated-rgb: 241 234 223;
+  --color-line-rgb: 222 211 196;
+  --color-text-rgb: 45 39 32;
+  --color-text-soft-rgb: 89 79 68;
+  --color-muted-rgb: 130 118 104;
+  --color-muted-foreground-rgb: 117 105 91;
+  --color-accent-rgb: 190 133 68;
+  --color-accent-hover-rgb: 165 109 46;
+  --color-accent-soft-rgb: 245 224 194;
+  --color-positive-rgb: 65 137 103;
+  --color-negative-rgb: 194 83 93;
+  --color-warning-rgb: 184 125 47;
+  --color-info-rgb: 85 121 185;
+  --color-success-soft-rgb: 224 242 232;
+  --color-danger-soft-rgb: 252 230 233;
+  --color-warning-soft-rgb: 253 239 213;
+  --color-info-soft-rgb: 226 237 251;
+  --select-bg: #fffbf4;
+  --shadow-glow: 0 0 0 1px rgb(var(--color-accent-rgb) / 0.12), 0 12px 24px rgba(87, 65, 44, 0.09);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 14px 30px rgba(95, 73, 52, 0.08);
+  --app-background:
+    radial-gradient(circle at 16% 8%, rgb(var(--color-accent-rgb) / 0.13), transparent 30%),
+    radial-gradient(circle at 88% 14%, rgba(255, 255, 255, 0.72), transparent 24%),
+    linear-gradient(180deg, rgb(var(--color-surface-rgb)) 0%, #f1e8da 100%);
   color-scheme: light;
 }
 
@@ -617,6 +865,78 @@ textarea:focus-visible {
   .sidebar-nav-button:active,
   .theme-toggle:active {
     transform: translateY(1px) scale(0.99);
+  }
+
+  .theme-preview-card {
+    align-items: center;
+    display: flex;
+    min-height: 5.25rem;
+    position: relative;
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      transform 180ms ease;
+  }
+
+  .theme-preview-card:active {
+    transform: translateY(1px) scale(0.99);
+  }
+
+  .theme-preview-card-check {
+    align-items: center;
+    background: rgb(var(--color-accent-rgb));
+    border: 2px solid rgb(var(--color-panel-rgb));
+    border-radius: 999px;
+    box-shadow: 0 6px 12px rgb(0 0 0 / 0.14);
+    color: rgb(var(--color-surface-rgb));
+    display: inline-flex;
+    height: 1rem;
+    justify-content: center;
+    position: absolute;
+    right: 0.6rem;
+    top: 0.6rem;
+    width: 1rem;
+    z-index: 2;
+  }
+
+  .theme-preview-disc {
+    align-items: center;
+    border-radius: 999px;
+    box-shadow:
+      inset 0 0 0 1px rgb(var(--color-line-rgb) / 0.08),
+      0 8px 20px rgb(0 0 0 / 0.12);
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 3rem;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    width: 3rem;
+  }
+
+  .theme-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    inset: 0;
+    position: absolute;
+  }
+
+  .theme-preview-cell {
+    display: block;
+    height: 100%;
+    width: 100%;
+  }
+
+  .theme-preview-core {
+    background: rgb(var(--color-panel-rgb) / 0.92);
+    border: 1px solid rgb(var(--color-line-rgb) / 0.08);
+    border-radius: 999px;
+    box-shadow: inset 0 1px 0 rgb(var(--color-text-rgb) / 0.05);
+    display: block;
+    height: 0.82rem;
+    position: relative;
+    width: 0.82rem;
+    z-index: 1;
   }
 
   .mobile-nav-button span {

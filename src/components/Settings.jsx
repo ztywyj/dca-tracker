@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { LogOut, Plus, Save, Sparkles, Trash2 } from 'lucide-react'
+import { Check, LogOut, Plus, Save, Sparkles, Trash2 } from 'lucide-react'
 import { estimateTargetYield } from '../utils/yieldEstimator'
 import { formatNumericInput, normalizeNumericInput } from '../utils/numericInput'
 import {
@@ -139,6 +139,12 @@ function getOptionCardClass(active) {
     : 'subtle-panel text-textSoft'
 }
 
+function getThemePreviewColors(colors = []) {
+  const fallbackColors = ['#1f2937', '#374151', '#60a5fa', '#34d399']
+
+  return Array.from({ length: 4 }, (_, index) => colors[index] || fallbackColors[index])
+}
+
 export function getSavedReserveRatio(isOpenEnded, reserveRatio) {
   if (isOpenEnded) {
     return 0
@@ -156,6 +162,11 @@ export default function Settings({
   onDeletePlan,
   authRequired,
   onLogout,
+  theme = 'classic-dark',
+  themeOptions = [],
+  preferredDarkTheme = 'classic-dark',
+  preferredLightTheme = 'light',
+  onSetTheme,
 }) {
   const [form, setForm] = useState(() => normalizeFormPlan(plan))
   const [showAssetForm, setShowAssetForm] = useState(false)
@@ -172,6 +183,23 @@ export default function Settings({
   const totalWeight = useMemo(
     () => form.assets.reduce((sum, asset) => sum + (Number(asset.weight) || 0), 0),
     [form.assets],
+  )
+  const themeOptionGroups = useMemo(
+    () => [
+      {
+        appearance: 'dark',
+        title: '夜间主题',
+        selectedTheme: preferredDarkTheme,
+        options: themeOptions.filter((option) => option.appearance === 'dark'),
+      },
+      {
+        appearance: 'light',
+        title: '日间主题',
+        selectedTheme: preferredLightTheme,
+        options: themeOptions.filter((option) => option.appearance === 'light'),
+      },
+    ].filter((group) => group.options.length),
+    [preferredDarkTheme, preferredLightTheme, themeOptions],
   )
 
   const isOpenEnded = form.budgetMode === 'open-ended'
@@ -665,6 +693,59 @@ export default function Settings({
               </div>
             </div>
           </div>
+
+          {themeOptionGroups.length ? (
+            <div className="subtle-panel p-4">
+              <p className="mini-kicker">界面主题</p>
+
+              <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                {themeOptionGroups.map((group) => (
+                  <div key={group.appearance} className="subtle-panel p-4">
+                    <p className="mini-kicker">{group.title}</p>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {group.options.map((option) => {
+                        const isSelected = group.selectedTheme === option.value
+                        const isCurrent = theme === option.value
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => onSetTheme?.(option.value)}
+                            className={`theme-preview-card p-4 text-left ${getOptionCardClass(isSelected)}`}
+                          >
+                            {isCurrent ? (
+                              <span className="theme-preview-card-check">
+                                <Check size={12} strokeWidth={3} />
+                              </span>
+                            ) : null}
+                            <div className="flex items-center gap-3">
+                              <div className="theme-preview-disc" aria-hidden="true">
+                                <span className="theme-preview-grid">
+                                  {getThemePreviewColors(option.preview).map((color, index) => (
+                                    <span
+                                      key={`${option.value}-${color}-${index}`}
+                                      className="theme-preview-cell"
+                                      style={{ backgroundColor: color }}
+                                    />
+                                  ))}
+                                </span>
+                                <span className="theme-preview-core" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium text-white">{option.label}</div>
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="subtle-panel p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">

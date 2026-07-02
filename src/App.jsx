@@ -269,7 +269,7 @@ export default function App() {
   const authenticated = !authRequired || Boolean(runtime.authenticated)
   const { plan, plans, activePlanId, setActivePlan, replacePlan, replacePlans, resetPlan } = usePlan()
   const { records, addRecord, replaceRecords } = useRecords()
-  const { theme, toggleTheme } = useTheme()
+  const { theme, themeOptions, preferredDarkTheme, preferredLightTheme, isDarkTheme, setTheme, toggleTheme } = useTheme()
   const [activeTab, setActiveTab] = useState('portfolio')
   const [storageMeta, setStorageMeta] = useState(() => getStorageMeta())
   const notifiedRecoveryRef = useRef('')
@@ -388,6 +388,7 @@ export default function App() {
       activePlanId={activePlanId || ''}
       onChangeActivePlan={setActivePlan}
       theme={theme}
+      isDarkTheme={isDarkTheme}
       onToggleTheme={toggleTheme}
     >
       <Suspense fallback={<ScreenFallback />}>
@@ -408,6 +409,11 @@ export default function App() {
           authRequired={authRequired}
           onLogout={handleLogout}
           onNavigate={setActiveTab}
+          theme={theme}
+          themeOptions={themeOptions}
+          preferredDarkTheme={preferredDarkTheme}
+          preferredLightTheme={preferredLightTheme}
+          onSetTheme={setTheme}
         />
       </Suspense>
     </Layout>

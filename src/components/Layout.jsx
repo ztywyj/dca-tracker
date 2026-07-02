@@ -45,8 +45,8 @@ function PlanSelector({ plans, activePlanId, onChangeActivePlan, compact = false
   )
 }
 
-function ThemeButton({ theme, onToggleTheme, compact = false }) {
-  const isDark = theme === 'dark'
+function ThemeButton({ isDarkTheme, onToggleTheme, compact = false }) {
+  const isDark = isDarkTheme
   const Icon = isDark ? Moon : SunMedium
   const nextThemeLabel = isDark ? '切换到日间主题' : '切换到夜间主题'
 
@@ -92,6 +92,7 @@ export default function Layout({
   activePlanId = '',
   onChangeActivePlan,
   theme = 'dark',
+  isDarkTheme = true,
   onToggleTheme,
 }) {
   const activeItem = navItems.find((item) => item.key === activeTab) || navItems[0]
@@ -124,7 +125,7 @@ export default function Layout({
             activePlanId={activePlanId}
             onChangeActivePlan={onChangeActivePlan}
           />
-          <ThemeButton theme={theme} onToggleTheme={onToggleTheme} />
+          <ThemeButton isDarkTheme={isDarkTheme} onToggleTheme={onToggleTheme} />
         </div>
       </aside>
 
@@ -140,7 +141,7 @@ export default function Layout({
             onChangeActivePlan={onChangeActivePlan}
             compact
           />
-          <ThemeButton theme={theme} onToggleTheme={onToggleTheme} compact />
+          <ThemeButton isDarkTheme={isDarkTheme} onToggleTheme={onToggleTheme} compact />
         </div>
       </div>
 
