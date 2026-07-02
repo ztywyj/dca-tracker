@@ -55,6 +55,14 @@ function getLatestRecordedAssetPriceMap(planId, records = []) {
   return Object.fromEntries((latestRecord?.assets || []).map((asset) => [asset.ticker, Number(asset.price) || 0]))
 }
 
+export function getActualSharesForDecision({ tag, hasManualActualShares, actualSharesInput, suggestedShares }) {
+  if (tag === 'paused') {
+    return 0
+  }
+
+  return hasManualActualShares ? roundToTwo(toNumberOrFallback(actualSharesInput, 0)) : roundToTwo(suggestedShares)
+}
+
 export default function OperationPanel({ plan, records, onSaveRecord, onNavigate }) {
   const [operationDate, setOperationDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [tag, setTag] = useState('normal')
@@ -136,7 +144,12 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
       ? getVaSuggestedShares(requiredAmount, price, shareSuggestionOptions)
       : getDcaSuggestedShares(requiredAmount, price, shareSuggestionOptions)
     const hasManualActualShares = state.actualShares !== null && state.actualShares !== undefined
-    const actualShares = hasManualActualShares ? roundToTwo(toNumberOrFallback(state.actualShares, 0)) : roundToTwo(suggestedShares)
+    const actualShares = getActualSharesForDecision({
+      tag,
+      hasManualActualShares,
+      actualSharesInput: state.actualShares,
+      suggestedShares,
+    })
     const actualAmount = roundToTwo(actualShares * price)
 
     return {
@@ -148,7 +161,11 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
       suggestedShares,
       suggestedSharesDisplay: formatNumericInput(suggestedShares),
       actualSharesInput: state.actualShares,
-      actualSharesDisplay: hasManualActualShares ? state.actualShares : formatNumericInput(suggestedShares),
+      actualSharesDisplay: tag === 'paused'
+        ? '0'
+        : hasManualActualShares
+          ? state.actualShares
+          : formatNumericInput(suggestedShares),
       hasManualActualShares,
       actualShares,
       actualAmount,
@@ -312,6 +329,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
       <div className="grid gap-5 xl:grid-cols-2">
         {currentAssets.map((asset, index) => {
           const isOddLastCard = currentAssets.length % 2 === 1 && index === currentAssets.length - 1
+
           return (
             <article
               key={asset.ticker}

@@ -135,8 +135,16 @@ function rebalanceWeights(assets = []) {
 
 function getOptionCardClass(active) {
   return active
-    ? 'subtle-panel border-accent/20 bg-accent/10 text-slate-50'
+    ? 'subtle-panel border-accent/20 bg-accent/10 text-white'
     : 'subtle-panel text-textSoft'
+}
+
+export function getSavedReserveRatio(isOpenEnded, reserveRatio) {
+  if (isOpenEnded) {
+    return 0
+  }
+
+  return clampReserveRatio(reserveRatio ?? 0.2)
 }
 
 export default function Settings({
@@ -305,7 +313,7 @@ export default function Settings({
       name: form.name.trim(),
       budgetMode: isOpenEnded ? 'open-ended' : 'fixed',
       totalBudget: isOpenEnded ? 0 : totalBudgetValue,
-      reserveRatio: isOpenEnded ? 0 : clampReserveRatio(form.reserveRatio),
+      reserveRatio: getSavedReserveRatio(isOpenEnded, form.reserveRatio),
       totalPeriods: isOpenEnded
         ? Math.max(totalPeriodsValue || OPEN_ENDED_PLACEHOLDER_PERIODS, OPEN_ENDED_PLACEHOLDER_PERIODS)
         : totalPeriodsValue,
@@ -374,19 +382,19 @@ export default function Settings({
   }
 
   return (
-    <section className="grid gap-5 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
-      <div className="section-card">
+    <section className="console-grid xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
+      <div className="card p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="label">Plan Configuration</p>
             <h2 className="section-title">计划设置</h2>
             <p className="muted-copy mt-3 max-w-2xl">
-              配置节奏、预算和资产权重。左侧负责编辑，右侧像 Stripe 的 review 面板一样持续检查是否能安全保存。
+              配置节奏、预算和资产权重。右侧检查面板会实时提示当前计划是否可以保存。
             </p>
           </div>
 
           {plan ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
               <button
                 type="button"
                 onClick={() => setForm(normalizeFormPlan(plan))}
@@ -406,8 +414,13 @@ export default function Settings({
         </div>
 
         <div className="mt-5 grid gap-5">
-          <div className="subtle-panel p-4">
-            <p className="mini-kicker">计划名称</p>
+          <div className="settings-section">
+            <div className="settings-section-header">
+              <div>
+                <p className="mini-kicker">计划身份</p>
+                <p className="mt-2 text-sm text-muted-foreground">给这套执行参数一个清晰名称。</p>
+              </div>
+            </div>
             <label className="mt-4 block space-y-2">
               <span className="text-sm text-muted-foreground">名称</span>
               <input
@@ -420,8 +433,13 @@ export default function Settings({
             </label>
           </div>
 
-          <div className="subtle-panel p-4">
-            <p className="mini-kicker">预算模式</p>
+          <div className="settings-section">
+            <div className="settings-section-header">
+              <div>
+                <p className="mini-kicker">预算模式</p>
+                <p className="mt-2 text-sm text-muted-foreground">选择固定预算或长期持续投入。</p>
+              </div>
+            </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {budgetModeOptions.map((option) => (
                 <label key={option.value} className={`p-4 ${getOptionCardClass(form.budgetMode === option.value)}`}>
@@ -440,8 +458,13 @@ export default function Settings({
             </div>
           </div>
 
-          <div className="subtle-panel p-4">
-            <p className="mini-kicker">策略类型</p>
+          <div className="settings-section">
+            <div className="settings-section-header">
+              <div>
+                <p className="mini-kicker">策略类型</p>
+                <p className="mt-2 text-sm text-muted-foreground">VA 更强调路径控制，DCA 更强调稳定执行。</p>
+              </div>
+            </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {strategyOptions.map((option) => (
                 <label key={option.value} className={`p-4 ${getOptionCardClass(form.strategy === option.value)}`}>
@@ -465,7 +488,7 @@ export default function Settings({
           </div>
 
           {isOpenEnded ? (
-            <div className="subtle-panel p-4">
+            <div className="settings-section">
               <p className="mini-kicker">长期执行预算</p>
               <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-end">
                 <label className="space-y-2">
@@ -487,7 +510,7 @@ export default function Settings({
               </div>
             </div>
           ) : (
-            <div className="subtle-panel p-4">
+            <div className="settings-section">
               <p className="mini-kicker">预算与周期</p>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 <label className="space-y-2">
@@ -527,7 +550,7 @@ export default function Settings({
                   step="0.01"
                   value={reserveRatioValue}
                   onChange={(event) => updateField('reserveRatio', Number(event.target.value))}
-                  className="mt-4 w-full accent-blue-400"
+                  className="mt-4 w-full accent-accent"
                 />
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div className="surface-stat">
@@ -544,7 +567,7 @@ export default function Settings({
           )}
 
           <div className="grid gap-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
-            <div className="subtle-panel p-4">
+            <div className="settings-section">
               <p className="mini-kicker">执行节奏</p>
               <label className="mt-4 block space-y-2">
                 <span className="text-sm text-muted-foreground">定投频率</span>
@@ -563,7 +586,7 @@ export default function Settings({
             </div>
 
             {form.strategy === 'VA' ? (
-              <div className="subtle-panel p-4">
+              <div className="settings-section">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="mini-kicker">目标年化收益率</p>
@@ -591,7 +614,7 @@ export default function Settings({
                   step="0.01"
                   value={form.targetAnnualReturn}
                   onChange={(event) => updateField('targetAnnualReturn', Number(event.target.value))}
-                  className="mt-4 w-full accent-blue-400"
+                  className="mt-4 w-full accent-accent"
                 />
 
                 {estimatedRange ? (
@@ -606,7 +629,7 @@ export default function Settings({
                 ) : null}
               </div>
             ) : (
-              <div className="subtle-panel p-4">
+              <div className="settings-section">
                 <p className="mini-kicker">目标年化收益率</p>
                 <p className="mt-4 text-sm leading-6 text-muted-foreground">
                   DCA 策略不需要设置目标年化收益率，重点是固定节奏与长期执行。
@@ -647,7 +670,7 @@ export default function Settings({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="mini-kicker">资产配置</p>
-                <p className="mt-2 text-sm text-muted-foreground">所有权重之和必须等于 100%，数字和 ticker 持续使用等宽排版。</p>
+                <p className="mt-2 text-sm text-muted-foreground">权重之和必须等于 100%，数字和 ticker 使用等宽排版。</p>
               </div>
               <button
                 type="button"
@@ -721,7 +744,7 @@ export default function Settings({
                     step="0.01"
                     value={assetDraft.weight}
                     onChange={(event) => setAssetDraft((current) => ({ ...current, weight: Number(event.target.value) }))}
-                    className="mt-4 w-full accent-blue-400"
+                    className="mt-4 w-full accent-accent"
                   />
                 </div>
 
@@ -770,7 +793,7 @@ export default function Settings({
                           step="0.01"
                           value={asset.weight}
                           onChange={(event) => updateAssetWeight(asset.ticker, Number(event.target.value))}
-                          className="mt-4 w-full accent-blue-400"
+                          className="mt-4 w-full accent-accent"
                         />
                       </div>
 
@@ -809,7 +832,7 @@ export default function Settings({
               )}
             </div>
 
-            <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${isWeightValid ? 'border-positive/30 bg-positive/10 text-emerald-300' : 'border-warning/30 bg-warning/10 text-amber-200'}`}>
+            <div className={`mt-4 rounded-md border px-4 py-3 text-sm ${isWeightValid ? 'border-positive/30 bg-positive/10 text-positive' : 'border-warning/30 bg-warning/10 text-warning'}`}>
               当前总权重：<span className="data-value">{Math.round(totalWeight * 100)}%</span>
               {!isWeightValid ? '，请调整到 100% 后才能保存。' : '，可以保存当前计划。'}
             </div>
@@ -817,7 +840,7 @@ export default function Settings({
         </div>
       </div>
 
-      <aside className="section-card h-fit xl:sticky xl:top-[5.75rem]">
+      <aside className="card h-fit p-5 xl:sticky xl:top-5">
         <p className="label">Review</p>
         <h3 className="section-title">保存前检查</h3>
 

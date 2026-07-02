@@ -346,7 +346,7 @@ export default function History({
 
   return (
     <section className="section-shell">
-      <div className="section-card">
+      <div className="card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="label">Execution Archive</p>
@@ -360,7 +360,7 @@ export default function History({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             <button
               type="button"
               onClick={handleExportCsv}
@@ -441,18 +441,19 @@ export default function History({
         ) : null}
       </div>
 
-      <div className="space-y-4">
+      <div className={filteredRecords.length ? 'timeline-list' : 'space-y-4'}>
         {!plan ? (
           <div className="section-card text-center text-muted-foreground">
             还没有计划。你现在可以直接导入之前导出的备份，或者前往设置页创建第一份计划。
           </div>
-        ) : filteredRecords.length ? (
+        ) : null}
+        {filteredRecords.length ? (
           filteredRecords.map((record) => {
             const expanded = expandedId === record.id
             const editing = editingId === record.id && editDraft
 
             return (
-              <article key={record.id} className="section-card">
+              <article key={record.id} className="timeline-card">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-3">
@@ -485,7 +486,7 @@ export default function History({
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
                     <button
                       type="button"
                       onClick={() => setExpandedId(expanded ? '' : record.id)}
@@ -515,6 +516,9 @@ export default function History({
 
                 {editing ? (
                   <div className="mt-5 border-t border-white/[0.06] pt-5">
+                    <div className="mb-4 rounded-md border border-accent/20 bg-accent/10 px-3 py-2 text-sm text-textSoft">
+                      正在编辑第 {record.periodIndex + 1} 期记录，保存后会沿用现有回调重建计划状态。
+                    </div>
                     <div className="grid gap-4 xl:grid-cols-2">
                       {record.assets.map((asset) => {
                         const draftAsset = editDraft.assets.find((item) => item.ticker === asset.ticker) || {
@@ -678,11 +682,12 @@ export default function History({
               </article>
             )
           })
-        ) : (
-          <div className="section-card text-center text-muted-foreground">
-            当前筛选条件下还没有记录。
+        ) : plan ? (
+          <div className="empty-state text-muted-foreground">
+            <p className="label">No Records</p>
+            <h2 className="empty-state-title">当前筛选条件下还没有记录</h2>
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   )

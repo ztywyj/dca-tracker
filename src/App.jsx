@@ -6,6 +6,7 @@ import { calcAllTargets, getRequiredInvestment, getSuggestedShares as getVaSugge
 import { usePlan } from './hooks/usePlan'
 import { useRecords } from './hooks/useRecords'
 import { clearAll, getRuntimeInfo, getStorageMeta, subscribeStorageMeta } from './utils/storage'
+import useTheme from './hooks/useTheme'
 import { getRemainingDeployableBudget } from './utils/budget'
 
 const Dashboard = lazy(() => import('./components/Dashboard'))
@@ -268,6 +269,7 @@ export default function App() {
   const authenticated = !authRequired || Boolean(runtime.authenticated)
   const { plan, plans, activePlanId, setActivePlan, replacePlan, replacePlans, resetPlan } = usePlan()
   const { records, addRecord, replaceRecords } = useRecords()
+  const { theme, toggleTheme } = useTheme()
   const [activeTab, setActiveTab] = useState('portfolio')
   const [storageMeta, setStorageMeta] = useState(() => getStorageMeta())
   const notifiedRecoveryRef = useRef('')
@@ -385,6 +387,8 @@ export default function App() {
       plans={plans}
       activePlanId={activePlanId || ''}
       onChangeActivePlan={setActivePlan}
+      theme={theme}
+      onToggleTheme={toggleTheme}
     >
       <Suspense fallback={<ScreenFallback />}>
         <Screen
