@@ -122,7 +122,7 @@ export default function PortfolioOverview({
         </div>
       </header>
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid gap-5">
         {snapshot.planSnapshots.map((item) => (
           <article key={item.id} className="card p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
