@@ -1450,6 +1450,12 @@ textarea:focus-visible {
     }
   }
 
+  @media (max-width: 1023px) {
+    .app-content {
+      padding-top: 5.9rem;
+    }
+  }
+
   @media (max-width: 900px) {
     .dashboard-overview-layout,
     .dashboard-overview-matrix,
