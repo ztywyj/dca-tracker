@@ -313,7 +313,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
           </div>
           <div className="surface-stat">
             <p className="mini-kicker">建议下次定投</p>
-            <p className="mt-3 data-value text-xl">{suggestedNextDate || '--'}</p>
+            <p className="mt-3 data-value text-xl operation-next-date-value">{suggestedNextDate || '--'}</p>
             <p className="mt-2 text-xs text-muted-foreground">{latestRecord ? '按上一期频率顺延' : '暂无记录，建议从今天开始'}</p>
           </div>
           <div className="surface-stat">
@@ -345,7 +345,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.18fr)_minmax(280px,0.82fr)]">
+              <div className="mt-6 grid gap-5 xl:grid-cols-2">
                 <div className="subtle-panel flex h-full flex-col p-4">
                   <p className="mini-kicker">价格输入</p>
                   <div className="mt-4 flex-1">
@@ -368,7 +368,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                       className="operation-field operation-price-field financial-input"
                     />
                   </div>
-                  <div className="mt-4 subtle-row operation-footer-row">
+                  <div className="mt-4 subtle-row operation-footer-row operation-manual-row">
                     <span className="text-sm text-muted-foreground">可手动输入</span>
                     <button
                       type="button"
@@ -420,7 +420,7 @@ export default function OperationPanel({ plan, records, onSaveRecord, onNavigate
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-5 grid grid-cols-2 gap-5">
                 <div className="operation-metric-card p-4">
                   <p className="operation-metric-label">当前持仓价值</p>
                   <p className="operation-metric-value">{formatMoney(asset.currentValueBefore)}</p>
