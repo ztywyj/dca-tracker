@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, Download, FileUp, Pencil, Trash2 } from 'lucide-react'
 import { formatNumericInput, normalizeNumericInput, toNumberOrFallback } from '../utils/numericInput'
+import { downloadFile } from '../utils/download'
 
 const filters = [
   { value: 'all', label: '全部' },
@@ -48,18 +49,6 @@ function roundToTwo(value) {
 
 function isZeroShareAsset(asset) {
   return roundToTwo(asset?.actualShares) === 0
-}
-
-function downloadFile(filename, content, type) {
-  const blob = new Blob([content], { type })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.setAttribute('download', filename)
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
 }
 
 function toCsv(records) {
@@ -154,7 +143,7 @@ function parseBackupPayload(parsed) {
   }
 }
 
-export default function History({ plan, records, onDeleteRecord, onEditRecord, onImportBackup }) {
+export default function History({ plan, records, onDeleteRecord, onEditRecord, onImportBackup, onExportBackup }) {
   const [activeFilter, setActiveFilter] = useState('all')
   const [expandedId, setExpandedId] = useState('')
   const [editingId, setEditingId] = useState('')
@@ -184,17 +173,7 @@ export default function History({ plan, records, onDeleteRecord, onEditRecord, o
   }
 
   const handleExportJson = () => {
-    const today = new Date().toISOString().slice(0, 10)
-    const payload = {
-      version: '2.0',
-      exportedAt: new Date().toISOString(),
-      plans: plan ? [plan] : [],
-      activePlanId: plan?.id || null,
-      plan,
-      records,
-    }
-
-    downloadFile(`dca-backup-${today}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8;')
+    onExportBackup?.()
   }
 
   const handleDelete = (record) => {

@@ -5,8 +5,9 @@ import { calcAllTargets, getRequiredInvestment, getSuggestedShares as getVaSugge
 import { usePlan } from './hooks/usePlan'
 import { useRecords } from './hooks/useRecords'
 import useTheme from './hooks/useTheme'
-import { clearAll } from './utils/storage'
+import { clearAll, getBackupStatus, markBackedUp, markDataChanged } from './utils/storage'
 import { getRemainingDeployableBudget } from './utils/budget'
+import { downloadBackupJson } from './utils/backup'
 
 const Dashboard = lazy(() => import('./components/Dashboard'))
 const History = lazy(() => import('./components/History'))
@@ -196,19 +197,25 @@ export default function App() {
   const { records, addRecord, replaceRecords } = useRecords()
   const { theme, toggleTheme } = useTheme()
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [backupPing, setBackupPing] = useState(0)
 
   const Screen = useMemo(() => tabs[activeTab], [activeTab])
+  // backupPing forces a refresh after an export, since exporting doesn't
+  // otherwise change `plan` or `records` and would leave a stale reminder.
+  const backupStatus = useMemo(() => getBackupStatus(), [plan, records, backupPing])
 
   const handleSavePlan = (nextPlan) => {
     const { nextPlan: rebuiltPlan, nextRecords } = rebuildPlanState(nextPlan, records)
     replaceRecords(nextRecords)
     replacePlan(rebuiltPlan)
+    markDataChanged()
     setActiveTab('dashboard')
   }
 
   const handleSaveRecord = (record, nextPlan) => {
     addRecord(record)
     replacePlan(nextPlan)
+    markDataChanged()
     setActiveTab('history')
   }
 
@@ -216,6 +223,7 @@ export default function App() {
     const { nextPlan, nextRecords } = rebuildStateAfterRecordDeletion(plan, records, recordId)
     replaceRecords(nextRecords)
     replacePlan(nextPlan)
+    markDataChanged()
     setActiveTab('history')
   }
 
@@ -223,6 +231,7 @@ export default function App() {
     const { nextPlan, nextRecords } = rebuildStateAfterRecordEdit(plan, records, updatedRecord)
     replaceRecords(nextRecords)
     replacePlan(nextPlan)
+    markDataChanged()
     setActiveTab('history')
   }
 
@@ -240,6 +249,9 @@ export default function App() {
     if (nextActivePlanId) {
       setActivePlan(nextActivePlanId)
     }
+    // The data just loaded is, by definition, whatever the user had saved in
+    // that file, so treat the import itself as an up-to-date backup.
+    markBackedUp()
     setActiveTab(nextPlans.length ? 'history' : 'settings')
   }
 
@@ -248,6 +260,11 @@ export default function App() {
     replaceRecords([])
     resetPlan()
     setActiveTab('settings')
+  }
+
+  const handleExportBackup = () => {
+    downloadBackupJson(plan, plans, records)
+    setBackupPing((count) => count + 1)
   }
 
   return (
@@ -259,6 +276,8 @@ export default function App() {
       onChangeActivePlan={setActivePlan}
       theme={theme}
       onToggleTheme={toggleTheme}
+      backupStatus={backupStatus}
+      onExportBackup={handleExportBackup}
     >
       <Suspense fallback={<ScreenFallback />}>
         <Screen
@@ -271,6 +290,7 @@ export default function App() {
           onEditRecord={handleEditRecord}
           onImportBackup={handleImportBackup}
           onClearAllData={handleClearAllData}
+          onExportBackup={handleExportBackup}
           onNavigate={setActiveTab}
         />
       </Suspense>

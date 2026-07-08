@@ -3,6 +3,8 @@ const STORAGE_KEYS = {
   plans: 'dca-tracker:plans',
   activePlanId: 'dca-tracker:active-plan-id',
   records: 'dca-tracker:records',
+  lastBackupAt: 'dca-tracker:last-backup-at',
+  lastDataChangeAt: 'dca-tracker:last-data-change-at',
 }
 
 function canUseStorage() {
@@ -67,6 +69,50 @@ export function loadRecords() {
   return readStorage(STORAGE_KEYS.records, [])
 }
 
+export function saveLastBackupAt(timestamp) {
+  writeStorage(STORAGE_KEYS.lastBackupAt, timestamp)
+}
+
+export function loadLastBackupAt() {
+  return readStorage(STORAGE_KEYS.lastBackupAt, null)
+}
+
+export function saveLastDataChangeAt(timestamp) {
+  writeStorage(STORAGE_KEYS.lastDataChangeAt, timestamp)
+}
+
+export function loadLastDataChangeAt() {
+  return readStorage(STORAGE_KEYS.lastDataChangeAt, null)
+}
+
+// Call whenever the user completes a full JSON backup export or import.
+export function markBackedUp() {
+  saveLastBackupAt(new Date().toISOString())
+}
+
+// Call whenever a plan or record is created, edited, or deleted.
+export function markDataChanged() {
+  saveLastDataChangeAt(new Date().toISOString())
+}
+
+// Pure comparison, kept separate from storage reads so it can be unit
+// tested without a DOM/localStorage environment.
+export function computeHasUnbackedChanges(lastBackupAt, lastDataChangeAt) {
+  if (!lastDataChangeAt) return false
+  return !lastBackupAt || lastBackupAt < lastDataChangeAt
+}
+
+export function getBackupStatus() {
+  const lastBackupAt = loadLastBackupAt()
+  const lastDataChangeAt = loadLastDataChangeAt()
+
+  return {
+    lastBackupAt,
+    lastDataChangeAt,
+    hasUnbackedChanges: computeHasUnbackedChanges(lastBackupAt, lastDataChangeAt),
+  }
+}
+
 export function clearAll() {
   if (!canUseStorage()) {
     return
@@ -77,6 +123,8 @@ export function clearAll() {
     window.localStorage.removeItem(STORAGE_KEYS.plans)
     window.localStorage.removeItem(STORAGE_KEYS.activePlanId)
     window.localStorage.removeItem(STORAGE_KEYS.records)
+    window.localStorage.removeItem(STORAGE_KEYS.lastBackupAt)
+    window.localStorage.removeItem(STORAGE_KEYS.lastDataChangeAt)
   } catch (error) {
     console.error('Failed to clear storage', error)
   }
