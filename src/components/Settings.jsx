@@ -919,7 +919,7 @@ export default function Settings({
       </div>
 
       <div className="grid gap-5">
-        <aside className="card h-fit p-5 xl:sticky xl:top-5">
+        <aside className="card h-fit p-5">
         <p className="label">Review</p>
         <h3 className="section-title">保存前检查</h3>
 
