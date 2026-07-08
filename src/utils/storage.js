@@ -3,6 +3,8 @@ const STORAGE_KEYS = {
   plans: 'dca-tracker:plans',
   activePlanId: 'dca-tracker:active-plan-id',
   records: 'dca-tracker:records',
+  lastBackupAt: 'dca-tracker:last-backup-at',
+  lastDataChangeAt: 'dca-tracker:last-data-change-at',
 }
 
 const RUNTIME_EVENT_NAME = 'dca-tracker:runtime-update'
@@ -71,6 +73,18 @@ function writeBrowserStorage(key, value) {
     window.localStorage.setItem(key, JSON.stringify(value))
   } catch (error) {
     console.error(`Failed to write storage key: ${key}`, error)
+  }
+}
+
+function removeBrowserStorage(key) {
+  if (!canUseBrowserStorage()) {
+    return
+  }
+
+  try {
+    window.localStorage.removeItem(key)
+  } catch (error) {
+    console.error(`Failed to remove storage key: ${key}`, error)
   }
 }
 
@@ -187,6 +201,15 @@ function writeStorage(key, value) {
   writeBrowserStorage(key, value)
 }
 
+function clearBrowserBackupState() {
+  removeBrowserStorage(STORAGE_KEYS.lastBackupAt)
+  removeBrowserStorage(STORAGE_KEYS.lastDataChangeAt)
+}
+
+function isBrowserOnlyStorageMode() {
+  return !hasServerRuntime()
+}
+
 export function savePlan(plan) {
   writeStorage(STORAGE_KEYS.plan, plan)
 }
@@ -219,9 +242,75 @@ export function loadRecords() {
   return readStorage(STORAGE_KEYS.records, [])
 }
 
+export function saveLastBackupAt(timestamp) {
+  if (!isBrowserOnlyStorageMode()) {
+    return
+  }
+
+  writeBrowserStorage(STORAGE_KEYS.lastBackupAt, timestamp)
+}
+
+export function loadLastBackupAt() {
+  if (!isBrowserOnlyStorageMode()) {
+    return null
+  }
+
+  return readBrowserStorage(STORAGE_KEYS.lastBackupAt, null)
+}
+
+export function saveLastDataChangeAt(timestamp) {
+  if (!isBrowserOnlyStorageMode()) {
+    return
+  }
+
+  writeBrowserStorage(STORAGE_KEYS.lastDataChangeAt, timestamp)
+}
+
+export function loadLastDataChangeAt() {
+  if (!isBrowserOnlyStorageMode()) {
+    return null
+  }
+
+  return readBrowserStorage(STORAGE_KEYS.lastDataChangeAt, null)
+}
+
+export function markBackedUp() {
+  saveLastBackupAt(new Date().toISOString())
+}
+
+export function markDataChanged() {
+  saveLastDataChangeAt(new Date().toISOString())
+}
+
+export function computeHasUnbackedChanges(lastBackupAt, lastDataChangeAt) {
+  if (!lastDataChangeAt) return false
+  return !lastBackupAt || lastBackupAt < lastDataChangeAt
+}
+
+export function getBackupStatus() {
+  if (!isBrowserOnlyStorageMode()) {
+    return {
+      lastBackupAt: null,
+      lastDataChangeAt: null,
+      hasUnbackedChanges: false,
+    }
+  }
+
+  const lastBackupAt = loadLastBackupAt()
+  const lastDataChangeAt = loadLastDataChangeAt()
+
+  return {
+    lastBackupAt,
+    lastDataChangeAt,
+    hasUnbackedChanges: computeHasUnbackedChanges(lastBackupAt, lastDataChangeAt),
+  }
+}
+
 export function clearAll() {
   const runtime = getServerRuntime()
   const serverData = getServerData()
+
+  clearBrowserBackupState()
 
   if (runtime && serverData) {
     updateServerRuntime({

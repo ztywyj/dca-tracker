@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import {
   BarChart3,
+  Download,
   History as HistoryIcon,
   Moon,
   PanelsTopLeft,
   Settings as SettingsIcon,
   SunMedium,
+  TriangleAlert,
   WalletCards,
 } from 'lucide-react'
 
@@ -84,6 +87,34 @@ function NavButton({ item, active, onChangeTab, mobile = false }) {
   )
 }
 
+function BackupReminderBanner({ onExportBackup, onDismiss }) {
+  return (
+    <div
+      role="status"
+      className="card mb-4 flex flex-wrap items-start justify-between gap-4 border-warning/25 bg-warningSoft/30 p-4"
+    >
+      <div className="flex min-w-0 items-start gap-3">
+        <TriangleAlert size={18} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white">你有尚未备份的数据</p>
+          <p className="body-copy mt-1">
+            数据目前只保存在这台设备的浏览器里，换设备、清缓存或重装浏览器都可能导致丢失，建议导出一份 JSON 备份。
+          </p>
+        </div>
+      </div>
+      <div className="flex w-full shrink-0 gap-2 sm:w-auto">
+        <button type="button" onClick={onDismiss} className="control-button">
+          稍后再说
+        </button>
+        <button type="button" onClick={onExportBackup} className="control-button-primary">
+          <Download size={16} aria-hidden="true" />
+          立即备份
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Layout({
   activeTab,
   onChangeTab,
@@ -94,8 +125,17 @@ export default function Layout({
   theme = 'dark',
   isDarkTheme = true,
   onToggleTheme,
+  backupStatus = null,
+  onExportBackup,
 }) {
   const activeItem = navItems.find((item) => item.key === activeTab) || navItems[0]
+  // Remembers which change-timestamp the user already dismissed, so the
+  // banner comes back if new data changes after a dismissal, but not before.
+  const [dismissedChangeAt, setDismissedChangeAt] = useState(null)
+
+  const showBackupBanner = Boolean(
+    backupStatus?.hasUnbackedChanges && backupStatus.lastDataChangeAt !== dismissedChangeAt,
+  )
 
   return (
     <div id="root-layout" className="app-shell bg-radial text-white" data-theme={theme}>
@@ -146,7 +186,15 @@ export default function Layout({
       </div>
 
       <div className="app-scroll-area">
-        <main className="app-content">{children}</main>
+        <main className="app-content">
+          {showBackupBanner && (
+            <BackupReminderBanner
+              onExportBackup={onExportBackup}
+              onDismiss={() => setDismissedChangeAt(backupStatus.lastDataChangeAt)}
+            />
+          )}
+          {children}
+        </main>
       </div>
 
       <nav className="mobile-tabbar" aria-label="底部导航">

@@ -5,9 +5,18 @@ import { getPeriodicAmount, getSuggestedShares as getDcaSuggestedShares } from '
 import { calcAllTargets, getRequiredInvestment, getSuggestedShares as getVaSuggestedShares } from './utils/vaCalc'
 import { usePlan } from './hooks/usePlan'
 import { useRecords } from './hooks/useRecords'
-import { clearAll, getRuntimeInfo, getStorageMeta, subscribeStorageMeta } from './utils/storage'
+import {
+  clearAll,
+  getBackupStatus,
+  getRuntimeInfo,
+  getStorageMeta,
+  markBackedUp,
+  markDataChanged,
+  subscribeStorageMeta,
+} from './utils/storage'
 import useTheme from './hooks/useTheme'
 import { getRemainingDeployableBudget } from './utils/budget'
+import { downloadBackupJson } from './utils/backup'
 
 const Dashboard = lazy(() => import('./components/Dashboard'))
 const History = lazy(() => import('./components/History'))
@@ -272,9 +281,14 @@ export default function App() {
   const { theme, themeOptions, preferredDarkTheme, preferredLightTheme, isDarkTheme, setTheme, toggleTheme } = useTheme()
   const [activeTab, setActiveTab] = useState('portfolio')
   const [storageMeta, setStorageMeta] = useState(() => getStorageMeta())
+  const [backupPing, setBackupPing] = useState(0)
   const notifiedRecoveryRef = useRef('')
 
   const Screen = useMemo(() => tabs[activeTab], [activeTab])
+  const backupStatus = useMemo(
+    () => getBackupStatus(),
+    [plan, plans, activePlanId, records, backupPing, storageMeta?.mode],
+  )
 
   const refreshStorageMeta = () => {
     setStorageMeta(getStorageMeta())
@@ -300,6 +314,7 @@ export default function App() {
     const { nextPlan: rebuiltPlan, nextRecords } = rebuildPlanState(nextPlan, records)
     replaceRecords(nextRecords)
     replacePlan(rebuiltPlan)
+    markDataChanged()
     refreshStorageMeta()
     setActiveTab('dashboard')
   }
@@ -307,6 +322,7 @@ export default function App() {
   const handleSaveRecord = (record, nextPlan) => {
     addRecord(record)
     replacePlan(nextPlan)
+    markDataChanged()
     refreshStorageMeta()
     setActiveTab('history')
   }
@@ -315,6 +331,7 @@ export default function App() {
     const { nextPlan, nextRecords } = rebuildStateAfterRecordDeletion(plan, records, recordId)
     replaceRecords(nextRecords)
     replacePlan(nextPlan)
+    markDataChanged()
     refreshStorageMeta()
     setActiveTab('history')
   }
@@ -323,6 +340,7 @@ export default function App() {
     const { nextPlan, nextRecords } = rebuildStateAfterRecordEdit(plan, records, updatedRecord)
     replaceRecords(nextRecords)
     replacePlan(nextPlan)
+    markDataChanged()
     refreshStorageMeta()
     setActiveTab('history')
   }
@@ -332,6 +350,7 @@ export default function App() {
 
     replaceRecords(nextRecords)
     replacePlans(nextPlans, nextActivePlanId)
+    markBackedUp()
     refreshStorageMeta()
     setActiveTab(nextPlans.length ? 'history' : 'settings')
   }
@@ -340,6 +359,7 @@ export default function App() {
     const { nextPlans, nextRecords, nextActivePlanId } = removePlanData(planId, plans, records, activePlanId)
     replaceRecords(nextRecords)
     replacePlans(nextPlans, nextActivePlanId)
+    markDataChanged()
     refreshStorageMeta()
     setActiveTab(nextPlans.length ? 'dashboard' : 'settings')
   }
@@ -350,6 +370,11 @@ export default function App() {
     resetPlan()
     refreshStorageMeta()
     setActiveTab('settings')
+  }
+
+  const handleExportBackup = () => {
+    downloadBackupJson(plan, plans, records, activePlanId)
+    setBackupPing((count) => count + 1)
   }
 
   const handleLogin = async (password) => {
@@ -390,6 +415,8 @@ export default function App() {
       theme={theme}
       isDarkTheme={isDarkTheme}
       onToggleTheme={toggleTheme}
+      backupStatus={backupStatus}
+      onExportBackup={handleExportBackup}
     >
       <Suspense fallback={<ScreenFallback />}>
         <Screen
@@ -406,6 +433,7 @@ export default function App() {
           onImportBackup={handleImportBackup}
           onDeletePlan={handleDeletePlan}
           onClearAllData={handleClearAllData}
+          onExportBackup={handleExportBackup}
           authRequired={authRequired}
           onLogout={handleLogout}
           onNavigate={setActiveTab}
